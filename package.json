@@ -1,0 +1,42 @@
+{
+  "name": "shooter-x",
+  "version": "1.2.0",
+  "description": "A 3D shooting game built with Three.js and Electron",
+  "main": "src/main.js",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "package-win": "electron-packager . shooter-x --platform=win32 --arch=x64 --out=dist --overwrite",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "build": {
+    "appId": "com.shooterx.game",
+    "productName": "Shooter X",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "src/icon.ico"
+    }
+  },
+  "keywords": [
+    "game",
+    "3d",
+    "shooter",
+    "three.js",
+    "electron"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "electron": "^28.1.0",
+    "electron-builder": "^26.0.12",
+    "electron-icon-builder": "^2.0.1",
+    "electron-packager": "^17.1.2"
+  }
+}

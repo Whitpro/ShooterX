@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shooter X</title>
+    <link rel="icon" type="image/png" href="src/textures/icons/icon.png">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #game-ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+            font-family: 'Rajdhani', 'Orbitron', sans-serif;
+        }
+        .menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            font-family: 'Rajdhani', 'Orbitron', sans-serif;
+            z-index: 1001;
+            display: none;
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            transition: all 0.3s ease-in-out;
+            backdrop-filter: blur(10px);
+            min-width: 320px;
+        }
+        .menu h1 {
+            font-size: 48px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        .menu.visible {
+            display: flex;
+            animation: menuAppear 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+        @keyframes menuAppear {
+            0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 22px;
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            font-family: 'Rajdhani', 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.2s;
+            display: block;
+            width: 220px;
+            margin: 15px auto;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        button:after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            transition: all 0.4s;
+        }
+        button:hover:after {
+            left: 100%;
+        }
+        .start-button { 
+            background: linear-gradient(135deg, #4CAF50, #2E7D32); 
+            border-bottom: 3px solid #1B5E20;
+        }
+        .start-button:hover { 
+            background: linear-gradient(135deg, #45a049, #265d29);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+        .quit-button { 
+            background: linear-gradient(135deg, #f44336, #c62828); 
+            border-bottom: 3px solid #b71c1c;
+        }
+        .quit-button:hover { 
+            background: linear-gradient(135deg, #e53935, #b71c1c);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
+        .resume-button { 
+            background: linear-gradient(135deg, #2196F3, #1565C0); 
+            border-bottom: 3px solid #0D47A1;
+        }
+        .resume-button:hover { 
+            background: linear-gradient(135deg, #1E88E5, #0D47A1);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+
+        /* CSS Variables */
+        :root {
+            --health-color: linear-gradient(90deg, #f00, #ff5252);
+            --health-scaleX: 1;
+            --stamina-color: linear-gradient(90deg, #4CAF50, #8BC34A);
+            --stamina-scaleX: 1;
+        }
+
+        /* Health Bar */
+        #healthBar {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 300px;
+            height: 18px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        #healthBar:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--health-color);
+            transform-origin: left;
+            transform: scaleX(var(--health-scaleX));
+            transition: transform 0.3s ease-out, background 0.3s;
+        }
+        #healthBarText {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 0 0 3px #000;
+            z-index: 2;
+            white-space: nowrap;
+        }
+
+        /* Stamina Bar */
+        #staminaBar {
+            position: absolute;
+            bottom: 55px;
+            left: 30px;
+            width: 300px;
+            height: 12px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        #staminaBar:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--stamina-color);
+            transform-origin: left;
+            transform: scaleX(var(--stamina-scaleX));
+            transition: transform 0.15s ease-out, background 0.3s;
+        }
+
+        /* Ammo Counter */
+        #ammoCounter {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            color: #fff;
+            font-size: 24px;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 20px;
+            padding: 8px 20px;
+            min-width: 160px;
+            border: 2px solid rgba(255, 193, 7, 0.3);
+            box-shadow: 0 0 15px rgba(255, 193, 7, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        #ammoCounter.reloading {
+            color: #FFC107;
+            transform: scale(1.05);
+            border: 2px solid rgba(255, 193, 7, 0.8);
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
+            animation: reloadPulse 1.5s infinite;
+        }
+        
+        #ammoCounter.ready {
+            color: #4CAF50;
+            transform: scale(1.1);
+            border: 2px solid rgba(76, 175, 80, 0.8);
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+        }
+        
+        #ammoCounter.reloading::before {
+            content: "⟳ ";
+            display: inline-block;
+            animation: spin 1.5s linear infinite;
+        }
+        
+        #ammoCounter.reloading::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(to right, #FFC107, #FF5722);
+            border-radius: 0 0 0 18px;
+            transform-origin: left;
+            animation: reloadProgress 1s linear forwards;
+            animation-duration: var(--reload-time, 1000ms);
+        }
+        
+        .reload-percent {
+            font-size: 18px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes reloadPulse {
+            0% { box-shadow: 0 0 15px rgba(255, 193, 7, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(255, 193, 7, 0.8); }
+            100% { box-shadow: 0 0 15px rgba(255, 193, 7, 0.5); }
+        }
+        
+        @keyframes reloadProgress {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        /* Crosshair */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            z-index: 1001;
+            transition: all 0.1s;
+        }
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: #fff;
+            box-shadow: 0 0 5px #00ffff;
+        }
+        #crosshair::before {
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            transform: translateY(-50%);
+        }
+        #crosshair::after {
+            top: 0;
+            left: 50%;
+            width: 2px;
+            height: 100%;
+            transform: translateX(-50%);
+        }
+        #crosshair .dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 4px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 5px #00ffff;
+        }
+
+        /* Wave Info */
+        #waveInfo {
+            position: absolute;
+            top: 20px;
+            left: 30px;
+            color: #fff;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 5px #000, 0 0 15px rgba(0, 255, 255, 0.7);
+            letter-spacing: 1px;
+            padding: 5px 15px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            border-left: 4px solid #00ffff;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Score Info */
+        #scoreInfo {
+            position: absolute;
+            top: 70px;
+            left: 30px;
+            color: #fff;
+            font-size: 18px;
+            font-weight: 500;
+            text-shadow: 1px 1px 3px #000;
+            line-height: 1.5;
+            letter-spacing: 0.5px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border-left: 3px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(3px);
+        }
+        #scoreInfo span.bonus {
+            color: #8BC34A;
+            font-weight: bold;
+        }
+        #scoreInfo span.multiplier {
+            color: #FFC107;
+            font-weight: bold;
+        }
+
+        #gameOverScreen h1 {
+            color: #ff3d3d;
+            animation: pulse 2s infinite;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+        }
+        #gameOverScreen .score {
+            font-size: 28px;
+            margin: 20px 0;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            letter-spacing: 1px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); text-shadow: 0 0 20px rgba(255, 0, 0, 0.8); }
+            50% { transform: scale(1.1); text-shadow: 0 0 30px rgba(255, 0, 0, 0.9); }
+            100% { transform: scale(1); text-shadow: 0 0 20px rgba(255, 0, 0, 0.8); }
+        }
+        
+        /* Hit markers animation */
+        @keyframes hitMarker {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+            30% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+        }
+
+        /* Menu Styles - Improved Pause Menu */
+        .menu {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .menu.visible {
+            display: flex;
+            animation: menuAppear 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        /* Improved Pause Menu */
+        #pauseMenu {
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(0, 200, 255, 0.3);
+            box-shadow: 0 0 40px rgba(0, 200, 255, 0.4);
+            backdrop-filter: blur(15px);
+            padding: 40px 30px;
+            border-radius: 15px;
+            width: 400px;
+        }
+        #pauseMenu h1 {
+            font-size: 60px;
+            margin-bottom: 35px;
+            color: #fff;
+            text-shadow: 0 0 15px rgba(0, 200, 255, 0.9);
+            letter-spacing: 8px;
+            animation: glowText 2s infinite alternate;
+        }
+        @keyframes glowText {
+            from { text-shadow: 0 0 15px rgba(0, 200, 255, 0.7); }
+            to { text-shadow: 0 0 25px rgba(0, 200, 255, 1); }
+        }
+        #pauseMenu button {
+            margin: 15px auto;
+            width: 280px;
+            padding: 18px 30px;
+            font-size: 24px;
+            transition: all 0.3s;
+            border-radius: 8px;
+            letter-spacing: 3px;
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+        #pauseMenu button:hover {
+            transform: translateY(-3px) translateZ(0);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+        #pauseMenu .resume-button {
+            background: linear-gradient(135deg, #2196F3, #0D47A1);
+            border-bottom: 4px solid #0a3880;
+            box-shadow: 0 5px 20px rgba(33, 150, 243, 0.4);
+        }
+        #pauseMenu .start-button {
+            background: linear-gradient(135deg, #43A047, #1B5E20);
+            border-bottom: 4px solid #0d4413;
+            box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
+        }
+        #pauseMenu .quit-button {
+            background: linear-gradient(135deg, #E53935, #B71C1C);
+            border-bottom: 4px solid #7f1717;
+            box-shadow: 0 5px 20px rgba(229, 57, 53, 0.4);
+        }
+        #pauseMenu::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, 
+                rgba(0, 220, 255, 0.5), 
+                rgba(0, 0, 0, 0), 
+                rgba(0, 0, 0, 0), 
+                rgba(0, 220, 255, 0.5));
+            z-index: -1;
+            border-radius: 15px;
+            animation: borderGlow 4s linear infinite;
+        }
+        @keyframes borderGlow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+
+        /* Additional styles appended at the end */
+        .pause-tips {
+            margin-top: 25px;
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+        }
+
+        /* Improved Main Menu */
+        #mainMenu {
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(0, 255, 170, 0.3);
+            box-shadow: 0 0 50px rgba(0, 255, 170, 0.3);
+            backdrop-filter: blur(15px);
+            padding: 40px 30px;
+            border-radius: 15px;
+            width: 450px;
+        }
+        #mainMenu h1 {
+            font-size: 72px;
+            font-weight: 800;
+            margin-bottom: 40px;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(0, 255, 170, 0.9);
+            letter-spacing: 5px;
+            position: relative;
+            animation: mainTitlePulse 3s infinite alternate;
+        }
+        #mainMenu h1::after {
+            content: '';
+            position: absolute;
+            width: 80%;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                rgba(0, 0, 0, 0), 
+                rgba(0, 255, 170, 0.7), 
+                rgba(0, 0, 0, 0));
+            bottom: -10px;
+            left: 10%;
+            animation: lineGlow 2s infinite alternate;
+        }
+        @keyframes mainTitlePulse {
+            0% { text-shadow: 0 0 20px rgba(0, 255, 170, 0.7); }
+            100% { text-shadow: 0 0 30px rgba(0, 255, 170, 1), 0 0 50px rgba(0, 255, 170, 0.5); }
+        }
+        @keyframes lineGlow {
+            0% { opacity: 0.5; box-shadow: 0 0 10px rgba(0, 255, 170, 0.5); }
+            100% { opacity: 1; box-shadow: 0 0 20px rgba(0, 255, 170, 0.8); }
+        }
+        #mainMenu button {
+            margin: 20px auto;
+            width: 300px;
+            padding: 20px 30px;
+            font-size: 28px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border-radius: 8px;
+            letter-spacing: 3px;
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+        }
+        #mainMenu button:hover {
+            transform: translateY(-5px) scale(1.03) translateZ(0);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+        }
+        #mainMenu button:active {
+            transform: translateY(2px) scale(0.98) translateZ(0);
+        }
+        #mainMenu .start-button {
+            background: linear-gradient(135deg, #43A047, #1B5E20);
+            border-bottom: 5px solid #0d4413;
+            box-shadow: 0 5px 25px rgba(76, 175, 80, 0.5);
+        }
+        #mainMenu .start-button:hover {
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            box-shadow: 0 15px 30px rgba(76, 175, 80, 0.6);
+        }
+        #mainMenu .quit-button {
+            background: linear-gradient(135deg, #E53935, #B71C1C);
+            border-bottom: 5px solid #7f1717;
+            box-shadow: 0 5px 25px rgba(229, 57, 53, 0.5);
+        }
+        #mainMenu .quit-button:hover {
+            background: linear-gradient(135deg, #F44336, #C62828);
+            box-shadow: 0 15px 30px rgba(229, 57, 53, 0.6);
+        }
+        #mainMenu::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, 
+                rgba(0, 255, 170, 0.5), 
+                rgba(0, 0, 0, 0), 
+                rgba(0, 0, 0, 0), 
+                rgba(0, 255, 170, 0.5));
+            z-index: -1;
+            border-radius: 15px;
+            animation: mainMenuBorder 6s linear infinite;
+        }
+        @keyframes mainMenuBorder {
+            0% { filter: hue-rotate(0deg); opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { filter: hue-rotate(90deg); opacity: 0.7; }
+        }
+        .version-info {
+            position: absolute;
+            bottom: 10px;
+            right: 15px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 1px;
+        }
+
+        #ammoCounter.low-ammo {
+            color: #FF5722;
+            animation: flashWarning 0.8s infinite;
+        }
+        
+        #ammoCounter.out-of-ammo {
+            color: #ff0000;
+            font-weight: bold;
+            background-color: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(255, 0, 0, 0.8);
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            padding: 10px 20px;
+            min-width: 200px;
+            font-size: 18px;
+        }
+        
+        @keyframes flashWarning {
+            0% { color: #FF5722; }
+            50% { color: #ff0000; }
+            100% { color: #FF5722; }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Main Menu -->
+        <div id="mainMenu" class="menu">
+            <div class="menu-content">
+                <h1>SHOOTER X</h1>
+                <button id="startButton" class="start-button">START GAME</button>
+                <button id="quitButton" class="quit-button">QUIT GAME</button>
+                <div class="version-info">v1.2.0</div>
+            </div>
+        </div>
+
+        <!-- Pause Menu -->
+        <div id="pauseMenu" class="menu">
+            <div class="menu-content">
+                <h1>PAUSED</h1>
+                <button id="resumeButton" class="resume-button">RESUME</button>
+                <button id="menuButton" class="start-button">MAIN MENU</button>
+                <button id="quitPauseButton" class="quit-button">QUIT GAME</button>
+                <div class="pause-tips">Press ESC to resume</div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="menu">
+            <div class="menu-content">
+                <h1>GAME OVER</h1>
+                <div class="score">FINAL SCORE: <span id="finalScore">0</span></div>
+                <button id="restartButton" class="start-button">TRY AGAIN</button>
+                <button id="menuGameOverButton" class="resume-button">MAIN MENU</button>
+                <button id="quitGameOverButton" class="quit-button">QUIT GAME</button>
+            </div>
+        </div>
+
+        <!-- Game UI -->
+        <div id="game-ui">
+            <!-- Power-up message overlay -->
+            <div id="powerup-message" style="
+                position: absolute;
+                top: 60px;
+                left: 50%;
+                transform: translateX(-50%);
+                color: #fff;
+                font-size: 2.2em;
+                font-weight: bold;
+                text-shadow: 0 0 10px #000, 0 0 20px #ff0;
+                background: rgba(0,0,0,0.4);
+                padding: 12px 32px;
+                border-radius: 12px;
+                z-index: 2000;
+                display: none;
+                pointer-events: none;
+            "></div>
+            <div id="healthBar">
+                <div id="healthBarText">100/100</div>
+            </div>
+            <div id="staminaBar"></div>
+            <div id="ammoCounter">30 / 30</div>
+            <div id="crosshair">
+                <div class="dot"></div>
+            </div>
+            <div id="waveInfo">WAVE 1</div>
+            <div id="scoreInfo">
+                Score: <span class="multiplier">0</span> | 
+                Multiplier: <span class="multiplier">1.0x</span> | 
+                Accuracy: <span class="bonus">100%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load game scripts -->
+    <script type="module">
+        import { initGame } from './game.js';
+        
+        // Initialize the game when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            initGame();
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,61 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Electron with DevTools",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "electron",
+            "program": "${workspaceFolder}/src/main.js",
+            "args": ["--remote-debugging-port=9222"],
+            "outputCapture": "std",
+            "console": "integratedTerminal",
+            "env": {
+                "ELECTRON_ENABLE_LOGGING": "true",
+                "ELECTRON_ENABLE_STACK_DUMPING": "true",
+                "NODE_ENV": "development"
+            },
+            "preLaunchTask": "electron-debug",
+            "runtimeArgs": [
+                "--inspect",
+                "--auto-open-devtools-for-tabs"
+            ]
+        },
+        {
+            "name": "Debug Main Process",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "electron",
+            "program": "${workspaceFolder}/src/main.js",
+            "outputCapture": "std",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug Renderer Process",
+            "type": "chrome",
+            "request": "attach",
+            "port": 9222,
+            "webRoot": "${workspaceFolder}",
+            "timeout": 30000
+        },
+        {
+            "name": "Debug All",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "electron",
+            "program": "${workspaceFolder}/src/main.js",
+            "args": ["--remote-debugging-port=9222"],
+            "outputCapture": "std",
+            "console": "integratedTerminal"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Debug Main + Renderer",
+            "configurations": ["Debug Main Process", "Debug Renderer Process"]
+        }
+    ]
+}
