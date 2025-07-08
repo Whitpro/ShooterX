@@ -1,4 +1,4 @@
-import * as THREE from '../three.js-r178/three.js-r178/src/Three.js';
+import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
 
 const ENEMY_TYPES = {
     GRUNT: {

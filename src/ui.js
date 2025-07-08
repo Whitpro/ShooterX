@@ -194,6 +194,9 @@ class UI {
         `;
         this.monsterInfoScreen.style.display = 'none';
         document.body.appendChild(this.monsterInfoScreen);
+
+        // Create black overlay for transitions
+        this.createBlackOverlay();
     }
 
     setupEventListeners() {
@@ -225,12 +228,20 @@ class UI {
         // Setup menu buttons
         const menuButton = document.getElementById('menuButton');
         if (menuButton) {
-            menuButton.onclick = () => this.game.quitToMenu();
+            menuButton.onclick = () => {
+                // First hide pause menu and show black overlay
+                this.hidePauseMenu();
+                this.game.quitToMenu();
+            };
         }
 
         const menuGameOverButton = document.getElementById('menuGameOverButton');
         if (menuGameOverButton) {
-            menuGameOverButton.onclick = () => this.game.quitToMenu();
+            menuGameOverButton.onclick = () => {
+                // First hide game over screen and show black overlay
+                this.hideGameOverScreen();
+                this.game.quitToMenu();
+            };
         }
 
         // Setup quit buttons
@@ -786,6 +797,46 @@ class UI {
             this.showPauseMenu();
         }
         this.lastMenu = null;
+    }
+
+    createBlackOverlay() {
+        // Create black overlay for transitions
+        this.blackOverlay = document.createElement('div');
+        this.blackOverlay.id = 'black-overlay';
+        this.blackOverlay.style.position = 'fixed';
+        this.blackOverlay.style.top = '0';
+        this.blackOverlay.style.left = '0';
+        this.blackOverlay.style.width = '100%';
+        this.blackOverlay.style.height = '100%';
+        this.blackOverlay.style.backgroundColor = '#000';
+        this.blackOverlay.style.zIndex = '1'; // Lower z-index to place behind UI
+        this.blackOverlay.style.opacity = '0';
+        this.blackOverlay.style.transition = 'opacity 0.5s ease';
+        this.blackOverlay.style.pointerEvents = 'none';
+        this.blackOverlay.style.display = 'none';
+        document.body.appendChild(this.blackOverlay);
+    }
+
+    showBlackOverlay(callback) {
+        if (this.blackOverlay) {
+            this.blackOverlay.style.display = 'block';
+            // Force a reflow before changing opacity for transition to work
+            void this.blackOverlay.offsetWidth;
+            this.blackOverlay.style.opacity = '1';
+            
+            if (callback) {
+                setTimeout(callback, 500); // Wait for fade in to complete
+            }
+        }
+    }
+
+    hideBlackOverlay() {
+        if (this.blackOverlay) {
+            this.blackOverlay.style.opacity = '0';
+            setTimeout(() => {
+                this.blackOverlay.style.display = 'none';
+            }, 500); // Wait for fade out to complete
+        }
     }
 }
 

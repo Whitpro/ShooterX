@@ -6,7 +6,7 @@ import {
 	LineBasicMaterial,
 	Mesh,
 	MeshBasicMaterial
-} from 'three';
+} from '../../../src/Three.WebGPU.js';
 
 /**
  * Creates a visual aid for rect area lights.

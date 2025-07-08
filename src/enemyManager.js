@@ -1,4 +1,4 @@
-import * as THREE from '../three.js-r178/three.js-r178/src/Three.js';
+import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
 import Enemy from './enemy.js';
 import { ENEMY_TYPES } from './enemyTypes.js';
 

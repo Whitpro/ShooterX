@@ -1,4 +1,4 @@
-import * as THREE from '../three.js-r178/three.js-r178/src/Three.js';
+import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
 import Player from './player.js';
 import Enemy from './enemy.js';
 import Weapon from './weapon.js';
@@ -33,10 +33,29 @@ class GameEngine {
             // Initialize core components
             this.scene = new THREE.Scene();
             this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            this.renderer = new THREE.WebGLRenderer({ 
-                antialias: true,
-                powerPreference: "high-performance"
-            });
+            
+            // Try to use WebGPU renderer with fallback to WebGL
+            try {
+                this.renderer = new THREE.WebGPURenderer({ 
+                    antialias: true,
+                    powerPreference: "high-performance",
+                    // WebGPU-specific optimizations
+                    samples: 4, // MSAA for improved quality
+                    trackTimestamp: false, // Disable timing queries to prevent "Maximum number of queries exceeded" error
+                    colorBufferType: THREE.HalfFloatType // Optimal color buffer format
+                });
+                console.log('Using WebGPU renderer with optimizations');
+            } catch (error) {
+                console.warn('WebGPU not supported, falling back to WebGL:', error);
+                // Fall back to WebGL renderer if WebGPU is not supported
+                this.renderer = new THREE.WebGLRenderer({ 
+                    antialias: true,
+                    powerPreference: "high-performance",
+                    precision: "highp"
+                });
+                console.log('Using WebGL renderer');
+            }
+            
             this.renderer.setSize(window.innerWidth, window.innerHeight);
             this.renderer.shadowMap.enabled = true;
             this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -235,6 +254,14 @@ class GameEngine {
                 this.animationFrameId = null;
             }
             
+            // Make scene visible again if it was hidden
+            this.scene.visible = true;
+            
+            // Hide the black overlay if it exists
+            if (this.ui && this.ui.blackOverlay) {
+                this.ui.hideBlackOverlay();
+            }
+            
             // Ensure we're in the correct state
             this.state = GAME_STATES.PLAYING;
             this.isRunning = true;
@@ -362,7 +389,11 @@ class GameEngine {
             // Update game if not paused
             if (!this.isPaused) {
                 this.update(this.deltaTime);
-                this.render();
+                
+                // Handle rendering - now asynchronous with WebGPU
+                this.render().catch(error => {
+                    debugError('Render error:', error);
+                });
             }
 
             // Continue the loop
@@ -422,6 +453,8 @@ class GameEngine {
             // Show animated boundary ring if near the edge
             if (this.environment && this.player) {
                 this.environment.updateBoundaryRing(this.player.position, deltaTime);
+                // Update animated barrier wall with player position
+                this.environment.updateAnimatedBarrierWall(deltaTime, this.player.position);
             }
             
             // Handle shooting
@@ -468,14 +501,60 @@ class GameEngine {
         }
     }
 
-    render() {
+    async render() {
         try {
             if (this.scene && this.camera) {
-                // Clear any previous renders
-                this.renderer.clear();
+                if (this.renderer.isWebGPURenderer) {
+                    // Use async methods for WebGPU renderer
+                    try {
+                        // Clear previous renders asynchronously
+                        await this.renderer.clearAsync();
+                        
+                        // Render the scene asynchronously
+                        await this.renderer.renderAsync(this.scene, this.camera);
+                        
+                        // Resolve timestamp queries to prevent "Maximum number of queries exceeded" error
+                        if (this.renderer.resolveTimestampsAsync) {
+                            try {
+                                // Use the THREE.TimestampQuery.RENDER constant if available
+                                const TimestampQuery = THREE.TimestampQuery || { RENDER: 'render' };
+                                await this.renderer.resolveTimestampsAsync(TimestampQuery.RENDER);
+                            } catch (timestampError) {
+                                // Ignore timestamp resolution errors
+                                console.warn('Error resolving WebGPU timestamps:', timestampError);
+                            }
+                        }
+                    } catch (webgpuError) {
+                        // If async operations fail, fall back to synchronous (in case backend isn't fully ready)
+                        debug('WebGPU async render failed, falling back to sync:', webgpuError);
+                        this.renderer.clear();
+                        this.renderer.render(this.scene, this.camera);
+                    }
+                } else {
+                    // Use synchronous methods for WebGL renderer
+                    this.renderer.clear();
+                    this.renderer.render(this.scene, this.camera);
+                }
                 
-                // Render the scene
-                this.renderer.render(this.scene, this.camera);
+                // Performance monitoring
+                if (this.renderer.isWebGPURenderer && DEBUG) {
+                    if (this._frameCount === undefined) {
+                        this._frameCount = 0;
+                        this._lastPerfLog = performance.now();
+                    }
+                    
+                    this._frameCount++;
+                    
+                    // Log performance data every 100 frames
+                    if (this._frameCount >= 100) {
+                        const now = performance.now();
+                        const elapsed = now - this._lastPerfLog;
+                        const fps = Math.round((this._frameCount / elapsed) * 1000);
+                        debug(`Performance: ${fps} FPS`);
+                        this._frameCount = 0;
+                        this._lastPerfLog = now;
+                    }
+                }
             }
         } catch (error) {
             debugError('Error in render:', error);
@@ -542,24 +621,39 @@ class GameEngine {
 
     quitToMenu() {
         debug('Quitting to menu');
-        this.state = GAME_STATES.MAIN_MENU;
-        this.isRunning = false;
-        this.isPaused = false;
         
-        // Reset game state
-        this.environment.reset();
-        this.enemyManager.reset();
-        this.player.reset();
-        this.weapon.reset();
-        
-        // Update UI
-        this.ui.hideAllMenus();
-        this.ui.hideGameplayUI();
-        this.ui.showMainMenu();
-        
-        // Exit pointer lock
-        if (document.pointerLockElement === document.body) {
-            document.exitPointerLock();
+        // First show black overlay
+        if (this.ui) {
+            this.ui.showBlackOverlay(() => {
+                // This runs after fade to black completes
+                this.state = GAME_STATES.MAIN_MENU;
+                this.isRunning = false;
+                this.isPaused = false;
+                
+                // Reset game state
+                this.environment.reset();
+                this.enemyManager.reset();
+                this.player.reset();
+                this.weapon.reset();
+                
+                // Hide the scene completely - we'll keep the black overlay
+                this.scene.visible = false;
+                
+                // Update UI
+                this.ui.hideAllMenus();
+                this.ui.hideGameplayUI();
+                this.ui.showMainMenu();
+                
+                // Keep overlay completely opaque (pitch black)
+                if (this.ui.blackOverlay) {
+                    this.ui.blackOverlay.style.opacity = '1.0';
+                }
+                
+                // Exit pointer lock
+                if (document.pointerLockElement === document.body) {
+                    document.exitPointerLock();
+                }
+            });
         }
     }
 
@@ -840,6 +934,21 @@ class GameEngine {
 
     showMainMenu() {
         this.state = GAME_STATES.MAIN_MENU;
+        
+        // Hide the scene when showing main menu
+        this.scene.visible = false;
+        
+        // Show black overlay with the menu
+        if (this.ui.blackOverlay) {
+            this.ui.showBlackOverlay();
+                         // Make it more transparent so we can see the menu clearly
+             setTimeout(() => {
+                 if (this.ui.blackOverlay) {
+                     this.ui.blackOverlay.style.opacity = '0.8';
+                 }
+             }, 100);
+        }
+        
         this.ui.showMainMenu();
         
         // Start animation loop if not already running
@@ -852,6 +961,10 @@ class GameEngine {
 function initGame() {
     try {
         const gameEngine = new GameEngine();
+        
+        // Hide scene immediately before showing main menu
+        gameEngine.scene.visible = false;
+        
         gameEngine.showMainMenu();
 
         // For Electron, make the engine accessible globally

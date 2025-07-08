@@ -50,6 +50,19 @@
             "args": ["--remote-debugging-port=9222"],
             "outputCapture": "std",
             "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch ShooterX",
+            "runtimeExecutable": "electron",
+            "runtimeArgs": ["."],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "sourceMaps": true,
+            "timeout": 30000
         }
     ],
     "compounds": [
