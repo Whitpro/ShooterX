@@ -1,9 +1,13 @@
+// Import BugReport module
+import BugReport from './bugReport.js';
+
 class Console {
     constructor(game) {
         this.game = game;
         this.isVisible = false;
         this.commandHistory = [];
         this.historyIndex = -1;
+        this.bugReporter = new BugReport(game);
         this.commands = {
             'help': () => this.showHelp(),
             'clear': () => this.clearConsole(),
@@ -19,7 +23,8 @@ class Console {
             'rgb': () => this.toggleRGBMode(),
             'infinitejump': () => this.toggleInfiniteJump(),
             'speed': (value) => this.setPlayerSpeed(value),
-            'spawnpowerup': (type) => this.spawnPowerUp(type)
+            'spawnpowerup': (type) => this.spawnPowerUp(type),
+            'report': () => this.reportBug()
         };
         this.rgbMode = true;
         this._rgbHue = 0;
@@ -151,6 +156,8 @@ class Console {
         this.isVisible = true;
         this.consoleElement.style.display = 'block';
         this.inputElement.focus();
+        // Display the report bug message when opening the console
+        this.log("type report to report a bug");
         // Pause the game if possible
         if (this.game && typeof this.game.pauseGame === 'function' && this.game.isRunning && !this.game.isPaused) {
             this.game.pauseGame();
@@ -357,6 +364,17 @@ class Console {
         } else {
             this.game.environment.spawnRandomPowerUp();
             this.log('Spawned random power-up');
+        }
+    }
+    
+    reportBug() {
+        if (this.bugReporter) {
+            this.log('Opening bug report form...', 'info');
+            // Hide console before showing bug report modal
+            this.hide();
+            this.bugReporter.show();
+        } else {
+            this.log('Bug reporting module not initialized properly', 'error');
         }
     }
 }

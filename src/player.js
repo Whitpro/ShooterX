@@ -71,6 +71,7 @@ class Player {
     setupPointerLock() {
         // Add click handler to request pointer lock
         document.addEventListener('click', () => {
+            if (window.isBugReportOpen) return; // Prevent pointer lock if bug report is open
             if (!this.isPointerLocked && !this.isPaused && this.viewMode === 'firstPerson') {
                 document.body.requestPointerLock();
                 console.log('Requesting pointer lock');
@@ -79,6 +80,11 @@ class Player {
         
         // Add pointer lock change handler
         document.addEventListener('pointerlockchange', () => {
+            if (window.isBugReportOpen) {
+                this.isPointerLocked = false;
+                document.body.style.cursor = 'default';
+                return;
+            }
             this.isPointerLocked = document.pointerLockElement === document.body;
             
             if (this.isPointerLocked) {

@@ -6,6 +6,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Import backend starter
+import backendStarter from './backendStarter.js';
+
 let mainWindow = null;
 
 // Enable debug logging
@@ -83,9 +86,24 @@ function createWindow() {
 }
 
 // Wait for app to be ready
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
     try {
-        debug('Application ready, creating window...');
+        debug('Application ready, starting backend and creating window...');
+        
+        // Initialize backend server
+        try {
+            const backendReady = await backendStarter.init();
+            if (backendReady) {
+                debug('Bug reporter backend server started successfully');
+            } else {
+                console.warn('Bug reporter backend server failed to start. Bug reporting may not work.');
+            }
+        } catch (backendError) {
+            console.error('Error starting backend server:', backendError);
+            // Continue anyway, the game should work without bug reporting
+        }
+        
+        // Create main window
         createWindow();
     } catch (error) {
         console.error('Error in app.whenReady:', error);
@@ -113,5 +131,16 @@ app.on('window-all-closed', () => {
         }
     } catch (error) {
         console.error('Error in window-all-closed handler:', error);
+    }
+});
+
+// Clean up backend when app is quitting
+app.on('quit', () => {
+    try {
+        debug('Application quitting, performing cleanup...');
+        // No need to explicitly stop the backend as we're using a detached process
+        // The backend will continue running so bug reports can be submitted even after game exit
+    } catch (error) {
+        console.error('Error in quit handler:', error);
     }
 }); 
