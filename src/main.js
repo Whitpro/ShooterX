@@ -1,4 +1,6 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+// Import electron as a CommonJS module
+import electron from 'electron';
+const { app, BrowserWindow, ipcMain } = electron;
 import path from 'path';
 import { fileURLToPath } from 'url';
 
