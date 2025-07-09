@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "npx electron .",
+    "start-server": "node server.js",
     "build": "npx electron-builder",
     "package-win": "npx electron-packager . shooter-x --platform=win32 --arch=x64 --out=dist --overwrite",
     "test": "echo \"Error: no test specified\" && exit 1"
