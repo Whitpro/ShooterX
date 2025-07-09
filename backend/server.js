@@ -8,7 +8,27 @@ const rateLimit = require('express-rate-limit');
 console.log('GITHUB_OWNER:', process.env.GITHUB_OWNER);
 console.log('GITHUB_REPO:', process.env.GITHUB_REPO);
 console.log('ALLOWED_ORIGINS:', process.env.ALLOWED_ORIGINS);
-console.log('GITHUB_TOKEN:', process.env.GITHUB_TOKEN ? '***SET***' : '***NOT SET***');
+
+// --- BEGIN: Read GitHub token from file if not set in env ---
+const fs = require('fs');
+const path = require('path');
+if (!process.env.GITHUB_TOKEN) {
+  const tokenPath = path.join(__dirname, 'github_token.txt');
+  if (fs.existsSync(tokenPath)) {
+    const fileToken = fs.readFileSync(tokenPath, 'utf8').trim();
+    if (fileToken) {
+      process.env.GITHUB_TOKEN = fileToken;
+      console.log('GITHUB_TOKEN: ***SET FROM FILE***');
+    } else {
+      console.log('GITHUB_TOKEN: ***NOT SET (FILE EMPTY)***');
+    }
+  } else {
+    console.log('GITHUB_TOKEN: ***NOT SET (NO ENV OR FILE)***');
+  }
+} else {
+  console.log('GITHUB_TOKEN:', process.env.GITHUB_TOKEN ? '***SET***' : '***NOT SET***');
+}
+// --- END: Read GitHub token from file if not set in env ---
 
 // Initialize Express app
 const app = express();
