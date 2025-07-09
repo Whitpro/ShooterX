@@ -440,8 +440,8 @@ class BugReport {
         
         console.log('Submitting bug report to backend:', bugData);
         
-        // API endpoint - change this to your deployed backend URL in production
-        const API_URL = 'http://localhost:3000/api/report-bug';
+        // API endpoint - deployed backend URL
+        const API_URL = 'https://your-deployed-backend.com/api/report-bug';
         
         // Submit to backend server
         fetch(API_URL, {
@@ -462,9 +462,9 @@ class BugReport {
             
             if (data.success) {
                 // Show success message with link if available
-                let successMessage = 'Thank you for your report! The issue has been created on GitHub.';
-                if (data.issueUrl) {
-                    successMessage += `\nIssue #${data.issueNumber} created.`;
+                let successMessage = 'Thank you for your report! The bug report has been sent to Discord.';
+                if (data.messageUrl) {
+                    successMessage += `\nReport ID: ${data.messageId}`;
                 }
                 
                 statusArea.textContent = successMessage;
