@@ -1,12 +1,34 @@
 // Bug reporting module for ShooterX
-// Handles UI and submission of bug reports to GitHub
+// Handles UI and submission of bug reports locally
 
 class BugReport {
     constructor(game) {
         this.game = game;
         this.isVisible = false;
         this.modalElement = null;
+        this.viewMode = false; // Flag to toggle between report form and view reports
+        this.reports = this.loadReports(); // Load saved reports
         this.createBugReportUI();
+    }
+
+    // Load saved reports from localStorage
+    loadReports() {
+        try {
+            const saved = localStorage.getItem('shooterx_bug_reports');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error('Error loading bug reports:', error);
+            return [];
+        }
+    }
+
+    // Save reports to localStorage
+    saveReports() {
+        try {
+            localStorage.setItem('shooterx_bug_reports', JSON.stringify(this.reports));
+        } catch (error) {
+            console.error('Error saving bug reports:', error);
+        }
     }
 
     createBugReportUI() {
@@ -29,6 +51,7 @@ class BugReport {
 
         // Create modal content
         const modalContent = document.createElement('div');
+        modalContent.id = 'bug-report-content';
         modalContent.style.cssText = `
             background: #181818;
             color: #f0f0f0;
@@ -42,6 +65,10 @@ class BugReport {
             border: 1px solid rgba(0, 255, 255, 0.2);
             position: relative;
         `;
+
+        // Create form container (will be toggled with view container)
+        const formContainer = document.createElement('div');
+        formContainer.id = 'bug-report-form-container';
 
         // Create title
         const title = document.createElement('h2');
@@ -174,9 +201,9 @@ class BugReport {
         sysInfoGroup.appendChild(sysInfoLabel);
         sysInfoGroup.appendChild(sysInfoInput);
 
-        // Buttons
-        const buttonGroup = document.createElement('div');
-        buttonGroup.style.cssText = `
+        // Buttons for form
+        const formButtonGroup = document.createElement('div');
+        formButtonGroup.style.cssText = `
             display: flex;
             justify-content: space-between;
             margin-top: 10px;
@@ -212,6 +239,22 @@ class BugReport {
             font-size: 16px;
         `;
 
+        // View Reports button
+        const viewReportsButton = document.createElement('button');
+        viewReportsButton.type = 'button';
+        viewReportsButton.textContent = 'View Reports';
+        viewReportsButton.style.cssText = `
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 16px;
+            margin-right: auto;
+        `;
+
         // Status message area
         const statusArea = document.createElement('div');
         statusArea.id = 'bug-report-status';
@@ -222,20 +265,113 @@ class BugReport {
             display: none;
         `;
 
-        // Add all elements to the form
-        buttonGroup.appendChild(cancelButton);
-        buttonGroup.appendChild(submitButton);
+        // Add buttons to form button group
+        formButtonGroup.appendChild(viewReportsButton);
+        formButtonGroup.appendChild(cancelButton);
+        formButtonGroup.appendChild(submitButton);
 
+        // Add all elements to the form
         form.appendChild(titleGroup);
         form.appendChild(descGroup);
         form.appendChild(stepsGroup);
         form.appendChild(sysInfoGroup);
-        form.appendChild(buttonGroup);
+        form.appendChild(formButtonGroup);
 
-        // Add form to modal content
-        modalContent.appendChild(title);
-        modalContent.appendChild(form);
-        modalContent.appendChild(statusArea);
+        // Add form to form container
+        formContainer.appendChild(title);
+        formContainer.appendChild(form);
+        formContainer.appendChild(statusArea);
+
+        // Create view reports container (initially hidden)
+        const viewContainer = document.createElement('div');
+        viewContainer.id = 'bug-report-view-container';
+        viewContainer.style.display = 'none';
+
+        // Create view reports title
+        const viewTitle = document.createElement('h2');
+        viewTitle.textContent = 'Saved Bug Reports';
+        viewTitle.style.cssText = `
+            color: #00ffff;
+            margin-top: 0;
+            text-align: center;
+            font-size: 24px;
+        `;
+
+        // Create reports list container
+        const reportsList = document.createElement('div');
+        reportsList.id = 'bug-reports-list';
+        reportsList.style.cssText = `
+            margin: 15px 0;
+            max-height: 60vh;
+            overflow-y: auto;
+        `;
+
+        // Create view container buttons
+        const viewButtonGroup = document.createElement('div');
+        viewButtonGroup.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        `;
+
+        // Back to form button
+        const backButton = document.createElement('button');
+        backButton.type = 'button';
+        backButton.textContent = 'Back to Form';
+        backButton.style.cssText = `
+            background: linear-gradient(135deg, #2196F3, #1565C0);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 16px;
+        `;
+
+        // Delete All button
+        const deleteAllButton = document.createElement('button');
+        deleteAllButton.type = 'button';
+        deleteAllButton.textContent = 'Delete All Reports';
+        deleteAllButton.style.cssText = `
+            background: linear-gradient(135deg, #f44336, #c62828);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 16px;
+        `;
+
+        // Export button
+        const exportButton = document.createElement('button');
+        exportButton.type = 'button';
+        exportButton.textContent = 'Export Reports';
+        exportButton.style.cssText = `
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 16px;
+        `;
+
+        // Add buttons to view button group
+        viewButtonGroup.appendChild(backButton);
+        viewButtonGroup.appendChild(exportButton);
+        viewButtonGroup.appendChild(deleteAllButton);
+
+        // Add elements to view container
+        viewContainer.appendChild(viewTitle);
+        viewContainer.appendChild(reportsList);
+        viewContainer.appendChild(viewButtonGroup);
+
+        // Add both containers to modal content
+        modalContent.appendChild(formContainer);
+        modalContent.appendChild(viewContainer);
 
         // Add modal content to modal container
         this.modalElement.appendChild(modalContent);
@@ -246,6 +382,10 @@ class BugReport {
         // Add event listeners
         form.addEventListener('submit', (e) => this.handleSubmit(e));
         cancelButton.addEventListener('click', () => this.hide());
+        viewReportsButton.addEventListener('click', () => this.showReports());
+        backButton.addEventListener('click', () => this.showForm());
+        deleteAllButton.addEventListener('click', () => this.deleteAllReports());
+        exportButton.addEventListener('click', () => this.exportReports());
 
         // Extra: Ensure pointer lock is released on any click in the modal
         this.modalElement.addEventListener('mousedown', () => {
@@ -258,7 +398,7 @@ class BugReport {
     collectSystemInfo() {
         const info = {
             userAgent: navigator.userAgent,
-            gameVersion: 'ShooterX v1.2.0',
+            gameVersion: 'ShooterX v1.2.6',
             platform: navigator.platform,
             timestamp: new Date().toISOString()
         };
@@ -279,6 +419,9 @@ class BugReport {
         const status = document.getElementById('bug-report-status');
         if (status) status.style.display = 'none';
         
+        // Show form by default
+        this.showForm();
+        
         // Make sure the game is fully paused/stopped
         this.pauseGame();
         
@@ -294,6 +437,183 @@ class BugReport {
         document.body.style.cursor = 'default';
         // Set global flag so game/player code can respect modal state
         window.isBugReportOpen = true;
+    }
+    
+    showForm() {
+        // Switch to form view
+        document.getElementById('bug-report-form-container').style.display = 'block';
+        document.getElementById('bug-report-view-container').style.display = 'none';
+        this.viewMode = false;
+    }
+    
+    showReports() {
+        // Switch to reports view
+        document.getElementById('bug-report-form-container').style.display = 'none';
+        document.getElementById('bug-report-view-container').style.display = 'block';
+        this.viewMode = true;
+        
+        // Refresh reports list
+        this.renderReportsList();
+    }
+    
+    renderReportsList() {
+        const reportsList = document.getElementById('bug-reports-list');
+        reportsList.innerHTML = '';
+        
+        if (this.reports.length === 0) {
+            const noReports = document.createElement('div');
+            noReports.textContent = 'No bug reports saved.';
+            noReports.style.cssText = `
+                text-align: center;
+                color: #aaa;
+                padding: 20px;
+            `;
+            reportsList.appendChild(noReports);
+            return;
+        }
+        
+        // Create a card for each report
+        this.reports.forEach((report, index) => {
+            const card = document.createElement('div');
+            card.className = 'bug-report-card';
+            card.style.cssText = `
+                background: #222;
+                border-radius: 4px;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-left: 4px solid #00ffff;
+            `;
+            
+            const cardHeader = document.createElement('div');
+            cardHeader.style.cssText = `
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            `;
+            
+            const cardTitle = document.createElement('h3');
+            cardTitle.textContent = report.title;
+            cardTitle.style.cssText = `
+                margin: 0;
+                color: #00ffff;
+                font-size: 18px;
+            `;
+            
+            const cardDate = document.createElement('span');
+            cardDate.textContent = new Date(report.timestamp).toLocaleString();
+            cardDate.style.cssText = `
+                color: #aaa;
+                font-size: 12px;
+            `;
+            
+            const cardDesc = document.createElement('p');
+            cardDesc.textContent = report.description;
+            cardDesc.style.cssText = `
+                margin: 10px 0;
+                color: #ddd;
+            `;
+            
+            const cardActions = document.createElement('div');
+            cardActions.style.cssText = `
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+                margin-top: 10px;
+            `;
+            
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.style.cssText = `
+                background: #c62828;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px 10px;
+                cursor: pointer;
+                font-size: 14px;
+            `;
+            deleteButton.addEventListener('click', () => this.deleteReport(index));
+            
+            // Assemble card
+            cardHeader.appendChild(cardTitle);
+            cardHeader.appendChild(cardDate);
+            cardActions.appendChild(deleteButton);
+            
+            card.appendChild(cardHeader);
+            card.appendChild(cardDesc);
+            
+            // Only show steps if provided
+            if (report.steps) {
+                const cardSteps = document.createElement('div');
+                cardSteps.style.cssText = `
+                    margin: 10px 0;
+                    padding: 10px;
+                    background: #1a1a1a;
+                    border-radius: 4px;
+                `;
+                
+                const stepsTitle = document.createElement('strong');
+                stepsTitle.textContent = 'Steps to Reproduce:';
+                stepsTitle.style.color = '#00ffff';
+                
+                const stepsContent = document.createElement('p');
+                stepsContent.textContent = report.steps;
+                stepsContent.style.cssText = `
+                    margin: 5px 0 0;
+                    color: #bbb;
+                    font-size: 14px;
+                `;
+                
+                cardSteps.appendChild(stepsTitle);
+                cardSteps.appendChild(stepsContent);
+                card.appendChild(cardSteps);
+            }
+            
+            card.appendChild(cardActions);
+            reportsList.appendChild(card);
+        });
+    }
+    
+    deleteReport(index) {
+        if (index >= 0 && index < this.reports.length) {
+            this.reports.splice(index, 1);
+            this.saveReports();
+            this.renderReportsList();
+        }
+    }
+    
+    deleteAllReports() {
+        if (confirm('Are you sure you want to delete all bug reports? This cannot be undone.')) {
+            this.reports = [];
+            this.saveReports();
+            this.renderReportsList();
+        }
+    }
+    
+    exportReports() {
+        if (this.reports.length === 0) {
+            alert('No bug reports to export.');
+            return;
+        }
+        
+        // Format reports as JSON
+        const jsonData = JSON.stringify(this.reports, null, 2);
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        // Create download link
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `shooterx_bug_reports_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        
+        // Clean up
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 0);
     }
     
     pauseGame() {
@@ -425,69 +745,38 @@ class BugReport {
         
         // Show submitting status
         const statusArea = document.getElementById('bug-report-status');
-        statusArea.textContent = 'Submitting bug report...';
+        statusArea.textContent = 'Saving bug report...';
         statusArea.style.display = 'block';
         statusArea.style.background = '#333';
         statusArea.style.color = '#fff';
         
-        // Prepare the data for submission
-        const bugData = {
+        // Create report object
+        const report = {
             title,
             description,
-            steps,
-            systemInfo
+            steps: steps || '',
+            systemInfo,
+            timestamp: new Date().toISOString()
         };
         
-        console.log('Submitting bug report to backend:', bugData);
+        // Add to reports array
+        this.reports.push(report);
         
-        // API endpoint - deployed backend URL
-        const API_URL = 'https://your-deployed-backend.com/api/report-bug';
+        // Save to localStorage
+        this.saveReports();
         
-        // Submit to backend server
-        fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(bugData)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Backend response:', data);
-            
-            if (data.success) {
-                // Show success message with link if available
-                let successMessage = 'Thank you for your report! The bug report has been sent to Discord.';
-                if (data.messageUrl) {
-                    successMessage += `\nReport ID: ${data.messageId}`;
-                }
-                
-                statusArea.textContent = successMessage;
-                statusArea.style.background = '#1b5e20';
-                statusArea.style.color = '#fff';
-                
-                // Close the modal after a delay and properly restore game state
-                setTimeout(() => {
-                    console.log('Bug reporter: Closing form after successful submission');
-                    this.hide(); // This calls resumeGame() internally
-                }, 3000);
-            } else {
-                throw new Error(data.message || 'Unknown error occurred');
-            }
-        })
-        .catch(error => {
-            console.error('Error submitting bug report:', error);
-            
-            // Show error message
-            statusArea.textContent = `Error submitting bug report: ${error.message}. Please try again later.`;
-            statusArea.style.background = '#c62828';
-            statusArea.style.color = '#fff';
-        });
+        console.log('Bug report saved locally:', report);
+        
+        // Show success message
+        statusArea.textContent = 'Bug report saved locally. Thank you!';
+        statusArea.style.background = '#1b5e20';
+        statusArea.style.color = '#fff';
+        
+        // Close the modal after a delay and properly restore game state
+        setTimeout(() => {
+            console.log('Bug reporter: Closing form after successful submission');
+            this.hide(); // This calls resumeGame() internally
+        }, 2000);
     }
 }
 

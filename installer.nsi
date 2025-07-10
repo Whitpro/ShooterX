@@ -4,7 +4,7 @@
 
 ; General
 Name "Shooter X"
-OutFile "dist\ShooterX-Setup-1.2.0.exe"
+OutFile "dist\ShooterX-Setup-1.2.6.exe"
 InstallDir "$PROGRAMFILES64\Shooter X"
 InstallDirRegKey HKCU "Software\Shooter X" ""
 
@@ -51,7 +51,7 @@ Section "Install"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Shooter X" \
                      "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Shooter X" \
-                     "DisplayVersion" "1.2.0"
+                     "DisplayVersion" "1.2.6"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Shooter X" \
                      "Publisher" "Shooter X"
     

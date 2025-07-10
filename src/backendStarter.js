@@ -16,6 +16,7 @@ class BackendStarter {
         this.maxRetries = 3;
         this.retryCount = 0;
         this.checkIntervalMs = 2000;
+        this.discordStatus = 'unknown';
         
         // Get the backend path relative to the current file
         // Handle ES modules __dirname equivalent
@@ -37,10 +38,20 @@ class BackendStarter {
             
             if (isRunning) {
                 console.log('[BackendStarter] Backend is already running');
+                
+                // Check Discord status
+                await this.checkDiscordStatus();
                 return true;
             } else {
                 console.log('[BackendStarter] Backend is not running, starting it...');
-                return this.startBackend();
+                const started = await this.startBackend();
+                
+                if (started) {
+                    // Check Discord status
+                    await this.checkDiscordStatus();
+                }
+                
+                return started;
             }
         } catch (error) {
             console.error('[BackendStarter] Error during initialization:', error);
@@ -65,6 +76,49 @@ class BackendStarter {
             }).on('error', () => {
                 // Connection failed, backend is not running
                 resolve(false);
+            });
+        });
+    }
+
+    /**
+     * Check the Discord status from the health endpoint
+     * @returns {Promise<string>} Discord status ('connected', 'disconnected', or 'unknown')
+     */
+    async checkDiscordStatus() {
+        return new Promise((resolve) => {
+            // Try to connect to the health endpoint
+            http.get(`${this.backendUrl}${this.healthEndpoint}`, (res) => {
+                if (res.statusCode === 200) {
+                    // Read the response data
+                    let data = '';
+                    res.on('data', (chunk) => {
+                        data += chunk;
+                    });
+                    
+                    res.on('end', () => {
+                        try {
+                            const response = JSON.parse(data);
+                            this.discordStatus = response.discordStatus || 'unknown';
+                            console.log(`[BackendStarter] Discord status: ${this.discordStatus}`);
+                            
+                            if (this.discordStatus === 'disconnected') {
+                                console.log('[BackendStarter] Discord is disconnected. Bug reports will be stored locally.');
+                            }
+                            
+                            resolve(this.discordStatus);
+                        } catch (error) {
+                            console.error('[BackendStarter] Error parsing health response:', error);
+                            this.discordStatus = 'unknown';
+                            resolve('unknown');
+                        }
+                    });
+                } else {
+                    this.discordStatus = 'unknown';
+                    resolve('unknown');
+                }
+            }).on('error', () => {
+                this.discordStatus = 'unknown';
+                resolve('unknown');
             });
         });
     }
@@ -106,8 +160,7 @@ class BackendStarter {
                 this.backendProcess = spawn('npm', ['start'], {
                     cwd: this.backendPath,
                     detached: true,
-                    stdio: 'ignore', // Uncomment the next line if you want to see backend logs
-                    // stdio: 'inherit',
+                    stdio: 'inherit', // Show backend logs in the main process
                     shell: true
                 });
                 
@@ -158,6 +211,14 @@ class BackendStarter {
             // Start checking
             setTimeout(checkServer, 1000); // Give it a second to start
         });
+    }
+
+    /**
+     * Get the current Discord status
+     * @returns {string} Discord status ('connected', 'disconnected', or 'unknown')
+     */
+    getDiscordStatus() {
+        return this.discordStatus;
     }
 
     /**
