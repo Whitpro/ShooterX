@@ -1,4 +1,30 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+// Check if we're running in an environment where Electron is available
+let electron;
+let app;
+let BrowserWindow;
+let ipcMain;
+
+try {
+  electron = await import('electron');
+  app = electron.app;
+  BrowserWindow = electron.BrowserWindow;
+  ipcMain = electron.ipcMain;
+} catch (error) {
+  console.log('Electron not available in this environment. Running in server-only mode.');
+  // Create mock objects for server environment
+  app = {
+    whenReady: () => Promise.resolve(),
+    on: (event, callback) => {},
+    quit: () => {}
+  };
+  BrowserWindow = {
+    getAllWindows: () => []
+  };
+  ipcMain = {
+    on: (channel, listener) => {}
+  };
+}
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -28,7 +54,13 @@ ipcMain.on('quit-game', () => {
     app.quit();
 });
 
+// Function to create window - only if Electron is available
 function createWindow() {
+    if (!electron) {
+        debug('Skipping window creation - Electron not available');
+        return;
+    }
+    
     try {
         debug('Creating main window...');
         
@@ -103,8 +135,12 @@ app.whenReady().then(async () => {
             // Continue anyway, the game should work without bug reporting
         }
         
-        // Create main window
-        createWindow();
+        // Create main window if Electron is available
+        if (electron) {
+            createWindow();
+        } else {
+            console.log('Running in server-only mode (no Electron UI)');
+        }
     } catch (error) {
         console.error('Error in app.whenReady:', error);
     }
@@ -113,7 +149,7 @@ app.whenReady().then(async () => {
 // Handle window activation
 app.on('activate', () => {
     try {
-        if (BrowserWindow.getAllWindows().length === 0) {
+        if (electron && BrowserWindow.getAllWindows().length === 0) {
             debug('No windows found, creating new window...');
             createWindow();
         }
@@ -126,7 +162,7 @@ app.on('activate', () => {
 app.on('window-all-closed', () => {
     try {
         debug('All windows closed');
-        if (process.platform !== 'darwin') {
+        if (electron && process.platform !== 'darwin') {
             app.quit();
         }
     } catch (error) {

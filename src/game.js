@@ -561,6 +561,40 @@ class GameEngine {
             throw error;
         }
     }
+    
+    // Simplified performance monitoring (no quality adjustment)
+    monitorPerformance() {
+        if (DEBUG) {
+            if (this._frameCount === undefined) {
+                this._frameCount = 0;
+                this._lastPerfLog = performance.now();
+            }
+            
+            this._frameCount++;
+            
+            // Log FPS every 100 frames
+            if (this._frameCount >= 100) {
+                const now = performance.now();
+                const elapsed = now - this._lastPerfLog;
+                const fps = Math.round((this._frameCount / elapsed) * 1000);
+                
+                debug(`Performance: ${fps} FPS`);
+                debug(`Rendered objects: ${this.getVisibleObjectCount()}`);
+                
+                this._frameCount = 0;
+                this._lastPerfLog = now;
+            }
+        }
+    }
+    
+    // Helper method to count visible objects
+    getVisibleObjectCount() {
+        let count = 0;
+        this.scene.traverse(object => {
+            if (object.isMesh && object.visible) count++;
+        });
+        return count;
+    }
 
     pauseGame() {
         if (this.isPaused) return;

@@ -1,11 +1,12 @@
 {
   "name": "shooter-x",
-  "version": "1.2.0",
+  "version": "1.2.6",
   "description": "A 3D shooting game built with Three.js and Electron",
   "main": "src/main.js",
   "type": "module",
   "scripts": {
     "start": "npx electron .",
+    "start-server": "node server.js",
     "build": "npx electron-builder",
     "package-win": "npx electron-packager . shooter-x --platform=win32 --arch=x64 --out=dist --overwrite",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -31,6 +32,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@sentry/browser": "^9.37.0",
+    "cors": "^2.8.5",
+    "discord.js": "^14.21.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "express-rate-limit": "^6.11.2",
     "three": "^0.160.0"
   },
   "devDependencies": {

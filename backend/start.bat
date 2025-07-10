@@ -1,3 +1,0 @@
-@echo off
-echo Starting ShooterX Bug Reporter Backend...
-npm start 

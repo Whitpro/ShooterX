@@ -15,6 +15,7 @@ class Environment {
         this.trees = []; // Store tree references
         this.spawnPoints = []; // Store valid spawn points
         this.initialized = false;
+        this.useTextures = true; // Enable textures
         
         // Check if we're using WebGPU to enable optimizations
         this.isUsingWebGPU = false;
@@ -69,84 +70,89 @@ class Environment {
         // Try loading textures
         console.log('Loading textures...');
         try {
-            // Try multiple possible texture paths (direct path first)
-            const texturePaths = [
-                './textures/environment/',
-                './src/textures/environment/',
-                '../textures/environment/',
-                '../../textures/environment/',
-                '/textures/environment/'
-            ];
-            
-            // Function to load a texture with proper error handling
-            const loadTexture = (name, material, callback) => {
-                // Try each path until one works
-                let loaded = false;
-                let loadAttempts = 0;
+            // Skip texture loading if disabled
+            if (!this.useTextures) {
+                console.log('Textures disabled, using basic materials');
+            } else {
+                // Try multiple possible texture paths (direct path first)
+                const texturePaths = [
+                    './textures/environment/',
+                    './src/textures/environment/',
+                    '../textures/environment/',
+                    '../../textures/environment/',
+                    '/textures/environment/'
+                ];
                 
-                const tryNextPath = () => {
-                    if (loadAttempts >= texturePaths.length || loaded) return;
+                // Function to load a texture with proper error handling
+                const loadTexture = (name, material, callback) => {
+                    // Try each path until one works
+                    let loaded = false;
+                    let loadAttempts = 0;
                     
-                    const path = texturePaths[loadAttempts] + name;
-                    console.log(`Trying to load ${name} from: ${path}`);
-                    
-                    const texture = this.textureLoader.load(
-                        path,
-                        // Success callback
-                        (tex) => {
-                            console.log(`Successfully loaded ${name} from ${path}`);
-                            loaded = true;
-                            
-                            // Apply WebGPU-specific optimizations if available
-                            if (this.isUsingWebGPU) {
-                                // WebGPU performs better with power-of-two textures
-                                tex.minFilter = THREE.LinearMipmapLinearFilter;
-                                tex.magFilter = THREE.LinearFilter;
-                                tex.generateMipmaps = true;
-                                tex.anisotropy = 16; // Higher anisotropy for WebGPU for better quality
+                    const tryNextPath = () => {
+                        if (loadAttempts >= texturePaths.length || loaded) return;
+                        
+                        const path = texturePaths[loadAttempts] + name;
+                        console.log(`Trying to load ${name} from: ${path}`);
+                        
+                        const texture = this.textureLoader.load(
+                            path,
+                            // Success callback
+                            (tex) => {
+                                console.log(`Successfully loaded ${name} from ${path}`);
+                                loaded = true;
+                                
+                                // Apply WebGPU-specific optimizations if available
+                                if (this.isUsingWebGPU) {
+                                    // WebGPU performs better with power-of-two textures
+                                    tex.minFilter = THREE.LinearMipmapLinearFilter;
+                                    tex.magFilter = THREE.LinearFilter;
+                                    tex.generateMipmaps = true;
+                                    tex.anisotropy = 16; // Higher anisotropy for WebGPU for better quality
+                                }
+                                
+                                if (callback) callback(tex);
+                            },
+                            // Progress callback
+                            undefined,
+                            // Error callback - try next path
+                            (err) => {
+                                console.log(`Failed to load ${name} from ${path}, trying next path...`);
+                                loadAttempts++;
+                                tryNextPath();
                             }
-                            
-                            if (callback) callback(tex);
-                        },
-                        // Progress callback
-                        undefined,
-                        // Error callback - try next path
-                        (err) => {
-                            console.log(`Failed to load ${name} from ${path}, trying next path...`);
-                            loadAttempts++;
-                            tryNextPath();
-                        }
-                    );
+                        );
+                    };
+                    
+                    // Start the loading process
+                    tryNextPath();
                 };
                 
-                // Start the loading process
-                tryNextPath();
-            };
-            
-            // Load ground texture
-            loadTexture('ground.jpg', this.materials.ground, (texture) => {
-                texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-                texture.repeat.set(8, 8);
-                this.materials.ground.map = texture;
-                this.materials.ground.needsUpdate = true;
-            });
-            
-            // Load rock texture
-            loadTexture('rock.jpg', this.materials.rock, (texture) => {
-                texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-                texture.repeat.set(2, 2);
-                this.materials.rock.map = texture;
-                this.materials.rock.color.set(0xBBBBBB); // Light gray tint
-                this.materials.rock.needsUpdate = true;
-            });
-            
-            // Load bark texture
-            loadTexture('bark.jpg', this.materials.bark, (texture) => {
-                texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-                texture.repeat.set(1, 3);
-                this.materials.bark.map = texture;
-                this.materials.bark.needsUpdate = true;
-            });
+                // Load ground texture
+                loadTexture('ground.jpg', this.materials.ground, (texture) => {
+                    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+                    texture.repeat.set(8, 8);
+                    this.materials.ground.map = texture;
+                    this.materials.ground.needsUpdate = true;
+                });
+                
+                // Load rock texture
+                loadTexture('rock.jpg', this.materials.rock, (texture) => {
+                    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+                    texture.repeat.set(2, 2);
+                    this.materials.rock.map = texture;
+                    this.materials.rock.color.set(0xBBBBBB); // Light gray tint
+                    this.materials.rock.needsUpdate = true;
+                });
+                
+                // Load bark texture
+                loadTexture('bark.jpg', this.materials.bark, (texture) => {
+                    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+                    texture.repeat.set(1, 3);
+                    this.materials.bark.map = texture;
+                    this.materials.bark.needsUpdate = true;
+                });
+            }
         } catch (error) {
             console.error('Error during texture loading setup:', error);
         }
@@ -338,20 +344,25 @@ class Environment {
     }
 
     createRock(x, y, z) {
-        // Use a simpler geometry that displays textures better
-        const rockGeometry = new THREE.SphereGeometry(1.0, 8, 6);
+        // Use an icosahedron with more subdivisions for a smoother, more natural rock shape
+        const rockGeometry = new THREE.IcosahedronGeometry(0.7, 1);
         
-        // Apply slight random deformation to make it look more natural
+        // Apply subtle, natural deformation
         const positions = rockGeometry.attributes.position;
         for (let i = 0; i < positions.count; i++) {
             const vertex = new THREE.Vector3();
             vertex.fromBufferAttribute(positions, i);
             
-            // Apply random displacement
-            const deform = 0.3;
-            vertex.x += (Math.random() - 0.5) * deform;
-            vertex.y += (Math.random() - 0.5) * deform;
-            vertex.z += (Math.random() - 0.5) * deform;
+            // Apply subtle, varied displacement
+            const deform = 0.15;
+            // Use distance from center for more natural deformation
+            const distance = vertex.length();
+            const factor = 0.5 + Math.random() * 0.5;
+            
+            // Apply deformation based on position and distance
+            vertex.x += (Math.random() - 0.5) * deform * factor;
+            vertex.y += (Math.random() - 0.5) * deform * factor;
+            vertex.z += (Math.random() - 0.5) * deform * factor;
             
             positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
         }
@@ -361,38 +372,34 @@ class Environment {
         
         // Create rock with proper material settings
         const rock = new THREE.Mesh(rockGeometry, this.materials.rock);
-        rock.position.set(x, y + 0.5, z);
+        rock.position.set(x, y + 0.4, z);
+        
+        // Vary the scale to create more diversity
+        const scale = 0.9 + Math.random() * 0.4;
+        // Make rocks slightly flatter for more natural appearance
+        rock.scale.set(scale * (0.9 + Math.random() * 0.3), 
+                       scale * (0.6 + Math.random() * 0.3), 
+                       scale * (0.9 + Math.random() * 0.3));
+        
+        // Random rotation but keep y-axis more natural
         rock.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
+            Math.random() * Math.PI * 0.3,
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 0.3
         );
+        
         rock.castShadow = true;
         rock.receiveShadow = true;
         this.scene.add(rock);
         
-        // Create a more precise collision shape using convex hull
-        const rockShape = new THREE.Box3();
-        rockShape.setFromObject(rock);
-        const rockSize = new THREE.Vector3();
-        rockShape.getSize(rockSize);
-        
-        // Create an octagonal collision boundary
-        const collisionPoints = [];
-        for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
-            const radius = rockSize.x * 0.4; // Tighter collision radius
-            collisionPoints.push(new THREE.Vector3(
-                x + Math.cos(angle) * radius,
-                0,
-                z + Math.sin(angle) * radius
-            ));
-        }
+        // Simplified collision - just use a sphere instead of complex shapes
+        const rockRadius = 0.4 * scale; // Adjust collision radius based on scale
         
         this.walls.push({
             type: 'rock',
-            bounds: rockShape,
-            collisionPoints: collisionPoints,
+            bounds: new THREE.Box3().setFromObject(rock),
+            collisionRadius: rockRadius,
+            position: new THREE.Vector3(x, y, z),
             object: rock
         });
     }
@@ -493,78 +500,78 @@ class Environment {
     createTree(x, z) {
         const treeGroup = new THREE.Group();
         
-        // Create trunk with simple bark texture
-        const trunkGeometry = new THREE.CylinderGeometry(0.15, 0.25, 3, 8);
+        // Create trunk with reduced segments but better shape
+        const trunkGeometry = new THREE.CylinderGeometry(0.15, 0.25, 3, 6);
         const trunk = new THREE.Mesh(trunkGeometry, this.materials.bark);
         trunk.position.y = 1.5;
         trunk.castShadow = true;
         trunk.receiveShadow = true;
         
-        // Add trunk detail by slightly rotating segments
+        // Add trunk detail by slightly rotating and bending it
         trunk.geometry.translate(0.1, 0, 0);
         trunk.rotation.z = Math.random() * 0.2 - 0.1;
         trunk.rotation.x = Math.random() * 0.2 - 0.1;
         treeGroup.add(trunk);
 
-        // Create more organic looking foliage using multiple overlapping shapes
+        // Create foliage with better color variation
         const foliageGroup = new THREE.Group();
         const foliageColors = [
             0x1B4721,  // Dark green
             0x2D5A27,  // Medium green
             0x3A6B35,  // Light green
-            0x2F5A1E   // Olive green
         ];
         
-        // Create main foliage body using multiple cones
-        for (let i = 0; i < 4; i++) {
-            const height = 2.5 - i * 0.2;
-            const radius = 1.2 - i * 0.15;
-            const segments = 8;
+        // Create main foliage body with better shape
+        // Use 3 cones for better appearance while still being optimized
+        for (let i = 0; i < 3; i++) {
+            const height = 2.2 - i * 0.4;
+            const radius = 1.0 - i * 0.15;
+            // Use 6 segments for better performance
+            const segments = 6;
             const foliageGeometry = new THREE.ConeGeometry(radius, height, segments);
-            const foliageMaterial = new THREE.MeshStandardMaterial({
+            const foliageMaterial = new THREE.MeshLambertMaterial({
                 color: foliageColors[i % foliageColors.length],
-                roughness: 1.0,
-                metalness: 0.0,
                 flatShading: true
             });
             
             const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
             
-            // Offset each cone slightly for more organic look
-            foliage.position.y = 3.0 + i * 0.8;
-            foliage.position.x = (Math.random() - 0.5) * 0.2;
-            foliage.position.z = (Math.random() - 0.5) * 0.2;
+            // Position cones with better spacing
+            foliage.position.y = 3.0 + i * 0.7;
+            // Add slight randomness for natural look
+            foliage.position.x = (Math.random() - 0.5) * 0.15;
+            foliage.position.z = (Math.random() - 0.5) * 0.15;
             
-            // Rotate each cone slightly
             foliage.rotation.y = Math.random() * Math.PI * 2;
-            foliage.rotation.x = (Math.random() - 0.5) * 0.2;
-            foliage.rotation.z = (Math.random() - 0.5) * 0.2;
+            // Less extreme rotation for more natural look
+            foliage.rotation.x = (Math.random() - 0.5) * 0.1;
+            foliage.rotation.z = (Math.random() - 0.5) * 0.1;
             
             foliage.castShadow = true;
             foliage.receiveShadow = true;
             foliageGroup.add(foliage);
         }
         
-        // Add smaller detail cones around the main body
-        for (let i = 0; i < 6; i++) {
-            const smallCone = new THREE.ConeGeometry(0.6, 1.2, 6);
-            const material = new THREE.MeshStandardMaterial({ 
+        // Add just 2 detail cones for better performance but still good appearance
+        for (let i = 0; i < 2; i++) {
+            const smallCone = new THREE.ConeGeometry(0.6, 1.2, 5);
+            const material = new THREE.MeshLambertMaterial({
                 color: foliageColors[Math.floor(Math.random() * foliageColors.length)],
-                roughness: 1.0,
-                metalness: 0.0,
                 flatShading: true
             });
             
             const detail = new THREE.Mesh(smallCone, material);
-            const angle = (i / 6) * Math.PI * 2;
+            // Position on opposite sides for better balance
+            const angle = i * Math.PI;
             const radius = 0.7;
             
             detail.position.x = Math.cos(angle) * radius;
             detail.position.z = Math.sin(angle) * radius;
-            detail.position.y = 3.5 + Math.random() * 1.5;
+            detail.position.y = 3.5 + Math.random() * 0.8;
             
-            detail.rotation.x = (Math.random() - 0.5) * 0.4;
-            detail.rotation.z = (Math.random() - 0.5) * 0.4;
+            // Less extreme rotation for more natural look
+            detail.rotation.x = (Math.random() - 0.5) * 0.3;
+            detail.rotation.z = (Math.random() - 0.5) * 0.3;
             detail.rotation.y = Math.random() * Math.PI * 2;
             
             detail.castShadow = true;
@@ -581,29 +588,17 @@ class Environment {
         // Add some random rotation to the entire tree
         treeGroup.rotation.y = Math.random() * Math.PI * 2;
         
-        // Create a cylinder-shaped collision for the trunk
-        const trunkRadius = 0.15;
-        const collisionPoints = [];
-        const numPoints = 8;
-        
-        // Create circular collision points around the trunk
-        for (let i = 0; i < numPoints; i++) {
-            const angle = (i / numPoints) * Math.PI * 2;
-            collisionPoints.push(new THREE.Vector3(
-                x + Math.cos(angle) * trunkRadius,
-                0,
-                z + Math.sin(angle) * trunkRadius
-            ));
-        }
+        // Simplified collision - just use a simple cylinder radius
+        const trunkRadius = 0.2;
         
         this.scene.add(treeGroup);
         
-        // Add to walls for collision detection
+        // Simplified collision detection
         this.walls.push({
             type: 'tree',
             bounds: new THREE.Box3().setFromObject(trunk),
-            collisionPoints: collisionPoints,
-            treeRadius: trunkRadius,
+            collisionRadius: trunkRadius,
+            position: new THREE.Vector3(x, 0, z),
             object: treeGroup
         });
         
@@ -671,8 +666,8 @@ class Environment {
         setupLighting() {
         // Performance-optimized lighting setup
         
-        // 1. Add ambient light with slight blue tint for atmosphere
-        const ambientLight = new THREE.AmbientLight(0xccddff, 0.6); // Increased intensity to compensate for fewer lights
+        // 1. Add ambient light with slightly increased intensity to compensate for fewer lights
+        const ambientLight = new THREE.AmbientLight(0xccddff, 0.7); // Increased intensity
         this.scene.add(ambientLight);
         
         // Apply AmbientLightNode if available
@@ -685,8 +680,8 @@ class Environment {
             console.warn('AmbientLightNode not fully supported:', e);
         }
 
-        // 2. Add directional light (sun)
-        const sunLight = new THREE.DirectionalLight(0xffffcc, 1.1); // Increased intensity
+        // 2. Add directional light (sun) with optimized settings
+        const sunLight = new THREE.DirectionalLight(0xffffcc, 1.2); // Increased intensity
         sunLight.position.set(50, 100, 50);
         sunLight.castShadow = true;
         
@@ -700,30 +695,31 @@ class Environment {
             console.warn('DirectionalLightNode not fully supported:', e);
         }
         
-        // Optimize shadow quality for performance
+        // Further optimize shadow quality for performance
         if (this.isUsingWebGPU) {
             // Reduced shadow map size for better performance
-            sunLight.shadow.mapSize.width = 2048; // Reduced from 4096
-            sunLight.shadow.mapSize.height = 2048; // Reduced from 4096
+            sunLight.shadow.mapSize.width = 1024; // Reduced from 2048
+            sunLight.shadow.mapSize.height = 1024; // Reduced from 2048
             // Improve shadow precision for WebGPU
             sunLight.shadow.bias = -0.0001;
         } else {
             // WebGL settings
-            sunLight.shadow.mapSize.width = 1024; // Reduced from 2048
-            sunLight.shadow.mapSize.height = 1024; // Reduced from 2048
+            sunLight.shadow.mapSize.width = 512; // Reduced from 1024
+            sunLight.shadow.mapSize.height = 512; // Reduced from 1024
         }
         
-        sunLight.shadow.camera.near = 0.5;
-        sunLight.shadow.camera.far = 500;
-        sunLight.shadow.camera.left = -100;
-        sunLight.shadow.camera.right = 100;
-        sunLight.shadow.camera.top = 100;
-        sunLight.shadow.camera.bottom = -100;
+        // Optimize shadow camera frustum
+        sunLight.shadow.camera.near = 1;
+        sunLight.shadow.camera.far = 300; // Reduced from 500
+        sunLight.shadow.camera.left = -80; // Reduced from -100
+        sunLight.shadow.camera.right = 80; // Reduced from 100
+        sunLight.shadow.camera.top = 80; // Reduced from 100
+        sunLight.shadow.camera.bottom = -80; // Reduced from -100
         
         this.scene.add(sunLight);
 
-        // 3. Add hemisphere light for better ambient lighting
-        const hemiLight = new THREE.HemisphereLight(0x80bbff, 0x554433, 0.7); // Increased intensity
+        // 3. Add hemisphere light with optimized settings
+        const hemiLight = new THREE.HemisphereLight(0x80bbff, 0x554433, 0.8); // Increased intensity
         hemiLight.position.set(0, 50, 0);
         
         // Apply HemisphereLightNode if available
@@ -737,45 +733,20 @@ class Environment {
         }
         
         this.scene.add(hemiLight);
-        
-        // 4. Add point lights around the map for local illumination
-        if (this.isUsingWebGPU) { // More complex lighting for WebGPU
-            // Create point lights at key locations with enhanced settings
-            this.createPointLight(20, 2, 15, 0xffaa66, 10, 0.8); // Enhanced warm campfire-like light
-            this.createPointLight(-15, 1.5, 20, 0x66ccff, 12, 0.6); // Enhanced cool blue light
-            this.createPointLight(-25, 2, -18, 0xaaddff, 14, 0.7); // Enhanced blue light
-            this.createPointLight(30, 1.8, -20, 0xffcc88, 16, 0.5); // Enhanced warm light
-            
-            // Add a spotlight to create dramatic lighting in one area
-            const spotlight = new THREE.SpotLight(0xffffff, 1.8, 35, Math.PI/6, 0.5, 1); // Enhanced spotlight
-            spotlight.position.set(0, 20, 0);
-            spotlight.target.position.set(10, 0, 10);
-            spotlight.castShadow = true;
-            spotlight.shadow.mapSize.width = 1024;
-            spotlight.shadow.mapSize.height = 1024;
-            
-            // Apply SpotLightNode if available
-            try {
-                if (typeof SpotLightNode === 'function') {
-                    const spotNode = new SpotLightNode(spotlight);
-                    spotlight.userData.lightNode = spotNode;
-                }
-            } catch (e) {
-                console.warn('SpotLightNode not fully supported:', e);
-            }
-            
-            this.scene.add(spotlight);
-            this.scene.add(spotlight.target);
-            
-            // Add subtle fog for atmosphere
-            this.scene.fog = new THREE.FogExp2(0x88aacc, 0.008);
-        }
+
+        // Remove additional point lights for performance
+        // Instead add just one central light with optimized settings
+        const centerLight = this.createPointLight(0, 15, 0, 0xffffaa, 50, 0.6);
+        centerLight.castShadow = false; // Disable shadows for point lights for performance
     }
-    
-    // Helper method to create point lights with shadows and enhanced lighting nodes
+
     createPointLight(x, y, z, color, distance, intensity) {
+        // Create an optimized point light
         const light = new THREE.PointLight(color, intensity, distance);
         light.position.set(x, y, z);
+        
+        // Disable shadows for point lights to improve performance
+        light.castShadow = false;
         
         // Apply PointLightNode if available
         try {
@@ -785,15 +756,6 @@ class Environment {
             }
         } catch (e) {
             console.warn('PointLightNode not fully supported:', e);
-        }
-        
-        // Only enable shadows on WebGPU for performance reasons
-        if (this.isUsingWebGPU) {
-            light.castShadow = true;
-            light.shadow.mapSize.width = 256; // Reduced shadow map size
-            light.shadow.mapSize.height = 256; // Reduced shadow map size
-            light.shadow.camera.near = 0.1;
-            light.shadow.camera.far = distance;
         }
         
         this.scene.add(light);
@@ -807,7 +769,7 @@ class Environment {
         if (this.isUsingWebGPU) {
             // WebGPU can handle more detailed clouds
             segments = 12;
-            cloudCount = 20;
+            cloudCount = 10;
         } else {
             // WebGL defaults
             segments = 8;
@@ -891,24 +853,31 @@ class Environment {
         for (const wall of this.walls) {
             switch(wall.type) {
                 case 'tree':
-                    // Check distance to trunk center
-                    const trunkCenter = new THREE.Vector2(wall.object.position.x, wall.object.position.z);
-                    const playerPos2D = new THREE.Vector2(position.x, position.z);
-                    const distanceToTrunk = trunkCenter.distanceTo(playerPos2D);
-                    if (distanceToTrunk < 0.2) { // Tight trunk collision
-                        return true;
+                    // Optimized tree collision using simple radius check
+                    if (wall.collisionRadius && wall.position) {
+                        const dx = position.x - wall.position.x;
+                        const dz = position.z - wall.position.z;
+                        const distanceSquared = dx * dx + dz * dz;
+                        if (distanceSquared < (wall.collisionRadius + playerRadius) * (wall.collisionRadius + playerRadius)) {
+                            return true;
+                        }
                     }
                     break;
                     
                 case 'rock':
-                    // Check if player is inside the rock's octagonal boundary
-                    if (this.isPointInPolygon(position, wall.collisionPoints)) {
-                        return true;
+                    // Optimized rock collision using simple radius check
+                    if (wall.collisionRadius && wall.position) {
+                        const dx = position.x - wall.position.x;
+                        const dz = position.z - wall.position.z;
+                        const distanceSquared = dx * dx + dz * dz;
+                        if (distanceSquared < (wall.collisionRadius + playerRadius) * (wall.collisionRadius + playerRadius)) {
+                            return true;
+                        }
                     }
                     break;
                     
                 case 'log':
-                    // Check distance to log's central line
+                    // Keep existing log collision logic
                     const distanceToLog = this.pointToLineDistance(
                         position,
                         wall.collisionPoints[0],
