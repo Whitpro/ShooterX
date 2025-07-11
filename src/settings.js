@@ -381,7 +381,17 @@ class Settings {
     
     // Create FPS counter element
     createFpsCounter() {
+        // First check if an FPS counter already exists in the DOM
+        const existingCounter = document.getElementById('fps-counter');
+        if (existingCounter) {
+            debug('FPS counter already exists, reusing existing element');
+            this.fpsCounter = existingCounter;
+            this.fpsMonitoringActive = true;
+            return;
+        }
+        
         if (!this.fpsCounter) {
+            debug('Creating new FPS counter');
             this.fpsCounter = document.createElement('div');
             this.fpsCounter.id = 'fps-counter';
             this.fpsCounter.style.position = 'fixed';
@@ -428,7 +438,12 @@ class Settings {
     // Destroy FPS counter element
     destroyFpsCounter() {
         if (this.fpsCounter) {
-            this.fpsCounter.remove();
+            // First check if the element still exists in the DOM
+            const existingCounter = document.getElementById('fps-counter');
+            if (existingCounter) {
+                existingCounter.remove();
+            }
+            
             this.fpsCounter = null;
             this.fpsMonitoringActive = false;
             
@@ -476,15 +491,41 @@ class Settings {
     applyFpsCounterVisibility(show) {
         debug('Applying FPS counter visibility:', show ? 'visible' : 'hidden');
         
+        // First check if an FPS counter already exists in the DOM
+        const existingCounter = document.getElementById('fps-counter');
+        
         if (show) {
+            // If we're showing the counter but there's already one in the DOM,
+            // make sure our reference points to it
+            if (existingCounter && !this.fpsCounter) {
+                debug('Found existing FPS counter in DOM, updating reference');
+                this.fpsCounter = existingCounter;
+                this.fpsMonitoringActive = true;
+            } 
             // Create counter if it doesn't exist
-            if (!this.fpsCounter) {
+            else if (!existingCounter) {
+                debug('No FPS counter exists, creating new one');
                 this.createFpsCounter();
-            } else {
+            } 
+            // If we have a reference but it's not in the DOM, recreate it
+            else if (this.fpsCounter && !document.body.contains(this.fpsCounter)) {
+                debug('FPS counter reference exists but not in DOM, recreating');
+                this.fpsCounter = null;
+                this.createFpsCounter();
+            }
+            // Otherwise, just make sure it's visible
+            else if (this.fpsCounter) {
                 this.fpsCounter.style.display = 'block';
+                this.fpsMonitoringActive = true;
             }
         } else {
-            // Hide counter if it exists
+            // If we're hiding and there's a counter in the DOM, remove it
+            if (existingCounter) {
+                debug('Removing existing FPS counter from DOM');
+                existingCounter.remove();
+            }
+            
+            // Clean up our reference
             if (this.fpsCounter) {
                 this.destroyFpsCounter();
             }

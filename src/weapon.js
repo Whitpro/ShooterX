@@ -467,23 +467,59 @@ class Weapon {
     }
 
     reset() {
+        console.log('[Weapon] Resetting weapon state');
+        
+        // Reset ammo and shooting parameters
         this.ammo = this.maxAmmo;
         this.lastShot = 0;
         this.currentRecoil = 0;
         this.isRecovering = false;
+        this.isReloading = false;
+        this.reloadStartTime = 0;
+        
         // Restore fireRate to original value
         this.fireRate = this._originalFireRate;
+        
         // Reset infinite ammo
         this.infiniteAmmo = false;
         
+        // Reset weapon position and rotation
+        if (this.model) {
+            this.model.position.copy(this.positionOffset);
+            this.model.rotation.copy(this.rotationOffset);
+        }
+        
+        // Reset camera rotation if available
         if (this.camera) {
             this.camera.rotation.copy(this.originalRotation);
         }
+        
+        // Hide bullet line
         if (this.bulletLine) {
             this.bulletLine.visible = false;
+            
+            // Reset bullet line geometry
+            const positions = new Float32Array(6);
+            this.bulletLine.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            this.bulletLine.geometry.attributes.position.needsUpdate = true;
         }
-
-        console.log('[Weapon] Reset, fireRate:', this.fireRate, '_originalFireRate:', this._originalFireRate);
+        
+        // Clean up any active bullet trails
+        if (this.activeTrails && this.activeTrails.length > 0) {
+            this.activeTrails.forEach(trail => {
+                if (trail.mesh) {
+                    this.scene.remove(trail.mesh);
+                    if (trail.mesh.geometry) trail.mesh.geometry.dispose();
+                    if (trail.mesh.material) trail.mesh.material.dispose();
+                }
+            });
+            this.activeTrails = [];
+        }
+        
+        // Reset weapon bobbing
+        this.bobTime = 0;
+        
+        console.log('[Weapon] Reset complete, fireRate:', this.fireRate, '_originalFireRate:', this._originalFireRate);
     }
 
     updateBulletTrails() {

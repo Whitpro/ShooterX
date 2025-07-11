@@ -398,7 +398,7 @@ class BugReport {
     collectSystemInfo() {
         const info = {
             userAgent: navigator.userAgent,
-            gameVersion: 'ShooterX v1.2.7',
+            gameVersion: 'ShooterX v1.2.8',
             platform: navigator.platform,
             timestamp: new Date().toISOString()
         };
@@ -644,6 +644,24 @@ class BugReport {
             this.game.ui.hidePauseMenu();
         }
         
+        // Explicitly pause the player's physics to prevent floating
+        if (this.game.player) {
+            console.log('Bug reporter: Explicitly pausing player physics');
+            this.game.player.setPaused(true);
+            
+            // Store the player's current velocity
+            this._playerVelocity = this.game.player.velocity.clone();
+            
+            // Reset player's vertical velocity to prevent floating
+            this.game.player.velocity.y = 0;
+            
+            // Force the player to be grounded if they're close to the ground
+            if (this.game.player.position.y < 1.5) {
+                this.game.player.position.y = 1.0;
+                this.game.player.isGrounded = true;
+            }
+        }
+        
         // Set our flag that we've paused the game
         this._pausedForBugReport = true;
     }
@@ -672,6 +690,20 @@ class BugReport {
         
         console.log('Bug reporter: Resuming game directly - wasPaused:', this.wasGamePaused, 
                    'wasRunning:', this._wasRunning, 'gameState:', this._gameState);
+        
+        // Restore player's physics state
+        if (this.game.player) {
+            console.log('Bug reporter: Restoring player physics');
+            
+            // Restore player's velocity if we stored it
+            if (this._playerVelocity) {
+                this.game.player.velocity.copy(this._playerVelocity);
+                this._playerVelocity = null;
+            }
+            
+            // Unpause the player
+            this.game.player.setPaused(false);
+        }
         
         // If the game was already paused before the bug report, keep it paused
         if (this.wasGamePaused) {

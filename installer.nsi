@@ -5,12 +5,12 @@
 ; General
 Name "Shooter X"
 !define PRODUCT_NAME "ShooterX"
-!define PRODUCT_VERSION "1.2.7"
+!define PRODUCT_VERSION "1.2.8"
 !define PRODUCT_PUBLISHER "ShooterX Team"
 !define PRODUCT_WEB_SITE "https://www.shooterx.com"
 
 ; Output file
-OutFile "dist\ShooterX-Setup-1.2.7.exe"
+OutFile "dist\ShooterX-Setup-1.2.8.exe"
 InstallDir "$PROGRAMFILES64\Shooter X"
 InstallDirRegKey HKCU "Software\Shooter X" ""
 
@@ -57,7 +57,7 @@ Section "Install"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Shooter X" \
                      "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Shooter X" \
-                     "DisplayVersion" "1.2.7"
+                     "DisplayVersion" "1.2.8"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Shooter X" \
                      "Publisher" "Shooter X"
     

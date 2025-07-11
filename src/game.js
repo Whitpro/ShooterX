@@ -82,6 +82,10 @@ class GameEngine {
             this.deltaTime = 0;
             this._hasHadPointerLock = false; // Track if game has ever had pointer lock
             
+            // Add debounce for pause toggle to prevent rapid toggling
+            this._lastPauseToggleTime = 0;
+            this._pauseToggleDebounceTime = 300; // ms
+            
             // Initialize Input system
             this.input = Input;
             this.input.init();
@@ -275,7 +279,12 @@ class GameEngine {
             document.addEventListener('keydown', (event) => {
                 // Only handle Escape key in this listener to avoid conflicts
                 if (event.key === 'Escape' && this.state === GAME_STATES.PLAYING) {
+                    // Prevent default browser behavior for Escape key
+                    event.preventDefault();
+                    
                     debug('ESC key pressed - toggling pause state');
+                    
+                    // Use the debounced togglePause method
                     this.togglePause();
                 }
             }, true); // Use capture phase to ensure it gets processed first
@@ -404,22 +413,35 @@ class GameEngine {
 
     cleanup() {
         debug('Cleaning up scene');
-        // More thorough scene cleaning
+        
+        // First, remove all objects that have specific cleanup handlers
+        if (this.environment) {
+            debug('Cleaning up environment objects');
+            this.environment.reset();
+        }
+        
+        // More thorough scene cleaning for remaining objects
         const objectsToRemove = [];
         
         this.scene.traverse(object => {
+            // Skip objects that are already handled by environment reset
+            if (object.userData && object.userData.isEnvironment) {
+                return;
+            }
+            
             // Remove lights, enemies, and any non-essential objects
             if (object.isLight || 
                 object.userData.type === 'enemy' || 
-                object.userData.temporary === true) {
+                object.userData.temporary === true ||
+                (object.isMesh && !object.userData.isPlayer && !object.userData.isWeapon)) {
                 objectsToRemove.push(object);
             }
         });
         
-        debug(`Removing ${objectsToRemove.length} objects from scene`);
+        debug(`Removing ${objectsToRemove.length} additional objects from scene`);
         objectsToRemove.forEach(object => {
             this.scene.remove(object);
-            // Dispose of geometries and materials to free memory
+            // Dispose geometries and materials
             if (object.geometry) object.geometry.dispose();
             if (object.material) {
                 if (Array.isArray(object.material)) {
@@ -434,6 +456,16 @@ class GameEngine {
         if (this.animationFrameId) {
             cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
+        }
+        
+        // Force garbage collection if available
+        if (window.gc) {
+            try {
+                window.gc();
+                debug('Forced garbage collection');
+            } catch (e) {
+                // Ignore if not available
+            }
         }
         
         debug('Scene cleanup complete');
@@ -546,7 +578,10 @@ class GameEngine {
             this.player.update(deltaTime, this.input, this.environment);
             // Update power-ups
             if (this.environment && this.player) {
+                debug('Updating power-ups with player:', this.player);
                 this.environment.updatePowerUps(this.player, deltaTime);
+            } else {
+                debug('Cannot update power-ups - environment or player missing');
             }
             // Show animated boundary ring if near the edge
             if (this.environment && this.player) {
@@ -709,11 +744,19 @@ class GameEngine {
         
         // Exit pointer lock only if not in settings menu (settings menu handles its own pointer lock)
         if (!window.isInSettingsMenu && document.pointerLockElement === document.body) {
+            // Set flag to indicate pointer lock is changing
+            this._isPointerLockChanging = true;
+            
             document.exitPointerLock();
+            
+            // Clear flag after a delay
+            setTimeout(() => {
+                this._isPointerLockChanging = false;
+            }, 100);
         }
         
-        // Show pause menu only if console is not open
-        if (this.ui && !window.isConsoleOpen) {
+        // Show pause menu only if console is not open and settings menu is not open
+        if (this.ui && !window.isConsoleOpen && !window.isInSettingsMenu) {
             this.ui.showPauseMenu();
         }
         
@@ -736,9 +779,24 @@ class GameEngine {
             this.ui.showGameplayUI();
         }
         
-        // Request pointer lock only if not in settings menu
-        if (!window.isInSettingsMenu && document.pointerLockElement !== document.body) {
-            document.body.requestPointerLock();
+        // Request pointer lock only if not in settings menu and console is not open
+        if (!window.isInSettingsMenu && !window.isConsoleOpen && document.pointerLockElement !== document.body) {
+            debug('Requesting pointer lock on resume');
+            
+            // Set flag to indicate pointer lock is changing
+            this._isPointerLockChanging = true;
+            
+            // Small delay to ensure UI updates first
+            setTimeout(() => {
+                if (this.state === GAME_STATES.PLAYING && !this.isPaused) {
+                    document.body.requestPointerLock();
+                    
+                    // Clear flag after a delay
+                    setTimeout(() => {
+                        this._isPointerLockChanging = false;
+                    }, 100);
+                }
+            }, 50);
         }
         
         // Notify player of resume state
@@ -750,6 +808,24 @@ class GameEngine {
     togglePause() {
         debug('Toggle pause called. Current state:', this.isPaused ? 'paused' : 'playing');
         
+        // Implement debounce to prevent rapid toggling
+        const now = performance.now();
+        if (now - this._lastPauseToggleTime < this._pauseToggleDebounceTime) {
+            debug('Ignoring pause toggle - too soon after last toggle');
+            return;
+        }
+        this._lastPauseToggleTime = now;
+        
+        // Check if we're in a state transition (pointer lock changing)
+        const isPointerLockChanging = this._isPointerLockChanging;
+        if (isPointerLockChanging) {
+            debug('Ignoring pause toggle - pointer lock is currently changing');
+            return;
+        }
+        
+        // Set flag to indicate we're changing state
+        this._isStateChanging = true;
+        
         if (this.isPaused) {
             debug('Resuming game from pause');
             this.resumeGame();
@@ -757,6 +833,11 @@ class GameEngine {
             debug('Pausing game');
             this.pauseGame();
         }
+        
+        // Clear state changing flag after a short delay
+        setTimeout(() => {
+            this._isStateChanging = false;
+        }, 100);
     }
 
     quitToMenu() {
@@ -964,6 +1045,24 @@ class GameEngine {
         this.screenShake.isShaking = false;
         if (this.screenShake.originalCameraPosition) {
             this.camera.position.copy(this.screenShake.originalCameraPosition);
+        }
+        
+        // Reset input system
+        if (this.input) {
+            debug('Resetting input system');
+            this.input.reset();
+        }
+        
+        // Reset any other state variables
+        this._lastPauseToggleTime = 0;
+        this._isPointerLockChanging = false;
+        this._isStateChanging = false;
+        this._preventAutoPause = false;
+        
+        // Clear THREE.js cache to prevent memory leaks
+        if (THREE && THREE.Cache) {
+            THREE.Cache.clear();
+            debug('Cleared THREE.js cache');
         }
 
         debug('Game state reset complete - ready for restart');

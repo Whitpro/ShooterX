@@ -290,8 +290,18 @@ class UI {
         const resumeButton = document.getElementById('resumeButton');
         if (resumeButton) {
             resumeButton.onclick = () => {
+                console.log('Resume button clicked');
                 this.hidePauseMenu();
                 this.game.resumeGame();
+                
+                // Add a small delay before requesting pointer lock
+                // This gives the browser time to process the button click event
+                setTimeout(() => {
+                    if (document.pointerLockElement !== document.body) {
+                        console.log('Requesting pointer lock after resume');
+                        document.body.requestPointerLock();
+                    }
+                }, 100);
             };
         }
 
@@ -839,15 +849,65 @@ class UI {
         }
         
         if (this.scoreInfo) {
-            const scoreDisplay = this.scoreInfo.querySelector('.multiplier');
+            const scoreDisplay = this.scoreInfo.querySelector('.score');
             if (scoreDisplay) scoreDisplay.textContent = '0';
             
-            const multiplierDisplay = this.scoreInfo.querySelector('.multiplier:nth-child(2)');
+            const multiplierDisplay = this.scoreInfo.querySelector('.multiplier');
             if (multiplierDisplay) multiplierDisplay.textContent = '1.0x';
             
             const accuracyDisplay = this.scoreInfo.querySelector('.bonus');
             if (accuracyDisplay) accuracyDisplay.textContent = '100%';
         }
+        
+        // Hide any active reload indicator
+        this.hideReloadIndicator();
+        
+        // Hide any active out-of-ammo warning
+        const outOfAmmoWarning = document.getElementById('out-of-ammo-warning');
+        if (outOfAmmoWarning) {
+            outOfAmmoWarning.style.display = 'none';
+            outOfAmmoWarning.style.opacity = '0';
+        }
+        
+        // Hide any active hit markers
+        const hitMarkers = document.querySelectorAll('.hit-marker');
+        hitMarkers.forEach(marker => {
+            marker.remove();
+        });
+        
+        // Hide any active damage indicators
+        const damageIndicators = document.querySelectorAll('.damage-indicator');
+        damageIndicators.forEach(indicator => {
+            indicator.remove();
+        });
+        
+        // Hide any active notifications
+        const notifications = document.querySelectorAll('.notification');
+        notifications.forEach(notification => {
+            notification.remove();
+        });
+        
+        // Reset any active animations or timers
+        if (this._reloadAnimationFrame) {
+            cancelAnimationFrame(this._reloadAnimationFrame);
+            this._reloadAnimationFrame = null;
+        }
+        
+        if (this._outOfAmmoTimeout) {
+            clearTimeout(this._outOfAmmoTimeout);
+            this._outOfAmmoTimeout = null;
+        }
+        
+        // Make sure the console is hidden
+        if (this.console) {
+            this.console.hide();
+        }
+        
+        // Reset any overlay states
+        this.hideBlackOverlay();
+        
+        // Reset menu tracking
+        this.lastMenu = null;
         
         debug('UI reset complete');
     }

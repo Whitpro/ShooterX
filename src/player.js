@@ -225,7 +225,12 @@ class Player {
     }
 
     update(deltaTime, input, environment) {
-        if (this.isPaused) return;
+        // Check for pause state first thing and return immediately if paused
+        if (this.isPaused) {
+            // When paused, ensure velocity is zero to prevent any movement
+            this.velocity.set(0, 0, 0);
+            return;
+        }
 
         // Handle movement
         const moveDirection = new THREE.Vector3();
@@ -421,6 +426,8 @@ class Player {
     }
 
     reset() {
+        console.log('[Player] Resetting player state');
+        
         // Reset position
         this.position.set(0, 1.0, 0); // Lower reset height
         this.model.position.copy(this.position);
@@ -434,12 +441,13 @@ class Player {
         this.movementBuffer = [];
         this.lastDelta = { x: 0, y: 0 };
         
-        // Reset camera
-        this.updateCameraPosition();
+        // Reset camera position and rotation immediately
+        this.camera.position.copy(this.position.clone().add(this.cameraOffset));
+        this.camera.lookAt(this.position.clone().add(this.cameraOffset).add(this.lookDirection));
         
         // Reset movement
         this.velocity.set(0, 0, 0);
-        this.isGrounded = false;
+        this.isGrounded = true; // Force grounded state on reset
         
         // Reset stats
         this.health = this.maxHealth;
@@ -454,6 +462,21 @@ class Player {
         // Reset state
         this.isPointerLocked = false;
         this.isPaused = false;
+        
+        // Reset view mode to first person
+        this.viewMode = 'firstPerson';
+        
+        // Ensure player model is properly visible/invisible based on view mode
+        if (this.viewMode === 'firstPerson') {
+            this.model.visible = false;
+        } else {
+            this.model.visible = true;
+        }
+        
+        // Update camera position to match the reset state
+        this.updateCameraPosition();
+        
+        console.log('[Player] Reset complete');
     }
 
     toggleGodMode() {

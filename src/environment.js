@@ -173,6 +173,9 @@ class Environment {
     reset() {
         console.log('Environment reset: cleaning up scene');
         
+        // Track total objects removed for debugging
+        let totalObjectsRemoved = 0;
+        
         // Clear existing objects
         this.walls.forEach(wall => {
             if (wall.object) {
@@ -185,6 +188,7 @@ class Environment {
                         wall.object.material.dispose();
                     }
                 }
+                totalObjectsRemoved++;
             }
         });
         
@@ -193,11 +197,13 @@ class Environment {
                 this.scene.remove(tree.trunk);
                 if (tree.trunk.geometry) tree.trunk.geometry.dispose();
                 if (tree.trunk.material) tree.trunk.material.dispose();
+                totalObjectsRemoved++;
             }
             if (tree.foliage) {
                 this.scene.remove(tree.foliage);
                 if (tree.foliage.geometry) tree.foliage.geometry.dispose();
                 if (tree.foliage.material) tree.foliage.material.dispose();
+                totalObjectsRemoved++;
             }
         });
         
@@ -207,6 +213,7 @@ class Environment {
             while (this.boundaryWall.children.length > 0) {
                 const child = this.boundaryWall.children[0];
                 this.boundaryWall.remove(child);
+                totalObjectsRemoved++;
             }
             
             // Remove boundary wall
@@ -219,15 +226,62 @@ class Environment {
                 this.boundaryWall.material.dispose();
             }
             this.boundaryWall = null;
+            totalObjectsRemoved++;
         }
         
         // Clean up barrier lights
         if (this.barrierLights && this.barrierLights.length > 0) {
             this.barrierLights.forEach(light => {
                 this.scene.remove(light);
+                totalObjectsRemoved++;
             });
         }
         this.barrierLights = [];
+
+        // Specifically find and remove cloud objects
+        const cloudsToRemove = [];
+        this.scene.traverse(object => {
+            if (object.userData && (object.userData.type === 'cloud' || object.userData.type === 'cloud-part')) {
+                cloudsToRemove.push(object);
+            }
+        });
+        
+        if (cloudsToRemove.length > 0) {
+            console.log(`Environment reset: specifically removing ${cloudsToRemove.length} cloud objects`);
+            cloudsToRemove.forEach(cloud => {
+                this.scene.remove(cloud);
+                // Dispose of cloud geometries and materials
+                if (cloud.geometry) cloud.geometry.dispose();
+                if (cloud.material) {
+                    if (Array.isArray(cloud.material)) {
+                        cloud.material.forEach(material => material.dispose());
+                    } else {
+                        cloud.material.dispose();
+                    }
+                }
+                totalObjectsRemoved++;
+            });
+        }
+
+        // Clean up power-ups
+        if (this.powerUps && this.powerUps.length > 0) {
+            console.log(`Environment reset: removing ${this.powerUps.length} power-ups`);
+            this.powerUps.forEach(powerUp => {
+                if (powerUp.model) {
+                    this.scene.remove(powerUp.model);
+                    if (powerUp.model.geometry) powerUp.model.geometry.dispose();
+                    if (powerUp.model.material) {
+                        if (Array.isArray(powerUp.model.material)) {
+                            powerUp.model.material.forEach(material => material.dispose());
+                        } else {
+                            powerUp.model.material.dispose();
+                        }
+                    }
+                    totalObjectsRemoved++;
+                }
+            });
+            this.powerUps = [];
+        }
 
         // Remove all lights and other environment objects
         const objectsToRemove = [];
@@ -240,7 +294,7 @@ class Environment {
             }
         });
         
-        console.log(`Environment reset: removing ${objectsToRemove.length} objects`);
+        console.log(`Environment reset: removing ${objectsToRemove.length} additional objects`);
         
         objectsToRemove.forEach(object => {
             this.scene.remove(object);
@@ -253,6 +307,7 @@ class Environment {
                     object.material.dispose();
                 }
             }
+            totalObjectsRemoved++;
         });
 
         // Clear THREE.js cache to prevent memory leaks
@@ -262,7 +317,10 @@ class Environment {
         this.walls = [];
         this.trees = [];
         this.spawnPoints = [];
+        this.powerUps = [];
+        this._powerUpTimer = 0;
         
+        console.log(`Environment reset: removed ${totalObjectsRemoved} objects total`);
         console.log('Environment reset: recreating world');
 
         // Recreate the world
@@ -272,9 +330,6 @@ class Environment {
         this.initialized = true;
         
         console.log('Environment reset complete');
-
-        this.powerUps = [];
-        this._powerUpTimer = 0;
     }
 
     createWorld() {
@@ -763,6 +818,8 @@ class Environment {
     }
 
     addClouds() {
+        console.log('[Environment] Adding clouds to scene');
+        
         // Cloud settings based on renderer capabilities
         let segments, cloudCount;
         
@@ -786,6 +843,9 @@ class Environment {
         // Create clouds based on detected capabilities
         for (let i = 0; i < cloudCount; i++) {
             const cloudCluster = new THREE.Group();
+            // Tag the cloud cluster for proper cleanup
+            cloudCluster.userData.isEnvironment = true;
+            cloudCluster.userData.type = 'cloud';
             
             const numSpheres = 3 + Math.floor(Math.random() * 3); // Original spheres per cloud
             for (let j = 0; j < numSpheres; j++) {
@@ -800,6 +860,9 @@ class Environment {
                     0.3 + Math.random() * 0.2,
                     0.5 + Math.random()
                 );
+                // Tag each cloud part for proper cleanup
+                cloudPart.userData.isEnvironment = true;
+                cloudPart.userData.type = 'cloud-part';
                 cloudCluster.add(cloudPart);
             }
 
@@ -811,6 +874,8 @@ class Environment {
             
             this.scene.add(cloudCluster);
         }
+        
+        console.log(`[Environment] Added ${cloudCount} cloud clusters to scene`);
     }
 
     createMapBoundaries() {
@@ -1118,33 +1183,80 @@ class Environment {
     }
 
     spawnRandomPowerUp() {
-        // Randomly choose between health, ammo, and rapidfire
-        const types = ['health', 'ammo', 'rapidfire'];
-        const type = types[Math.floor(Math.random() * types.length)];
-        const powerUp = new PowerUp(type, this);
-        this.powerUps.push(powerUp);
+        try {
+            // Randomly choose between health, ammo, and rapidfire
+            const types = ['health', 'ammo', 'rapidfire'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            console.log(`[Environment] Spawning random power-up of type: ${type}`);
+            
+            // Create the power-up with proper error handling
+            const powerUp = new PowerUp(type, this);
+            
+            if (!powerUp) {
+                console.error(`[Environment] Failed to create power-up of type: ${type}`);
+                return;
+            }
+            
+            this.powerUps.push(powerUp);
+            console.log(`[Environment] Power-up created successfully. Power-ups count: ${this.powerUps.length}`);
+            
+            // Force immediate update to ensure it's visible
+            if (powerUp.model && powerUp.model.position) {
+                console.log(`[Environment] Power-up position: ${powerUp.model.position.x.toFixed(2)}, ${powerUp.model.position.y.toFixed(2)}, ${powerUp.model.position.z.toFixed(2)}`);
+            }
+        } catch (error) {
+            console.error(`[Environment] Error spawning power-up:`, error);
+        }
     }
 
     updatePowerUps(player, deltaTime) {
+        // Ensure timer is not negative to start with
+        if (this._powerUpTimer < 0) {
+            console.log(`[Environment] Fixing negative power-up timer: ${this._powerUpTimer.toFixed(2)} → 0`);
+            this._powerUpTimer = 0;
+        }
+        
         // Spawn new power-ups at intervals
         this._powerUpTimer += deltaTime;
+        console.log(`[Environment] Power-up timer: ${this._powerUpTimer.toFixed(2)}/${this.powerUpSpawnInterval}`);
+        
         if (this._powerUpTimer >= this.powerUpSpawnInterval) {
+            console.log(`[Environment] Spawning new power-up after ${this._powerUpTimer.toFixed(2)} seconds`);
             this.spawnRandomPowerUp();
             this._powerUpTimer = 0;
         }
+        
         // Update all power-ups
+        const beforeCount = this.powerUps.length;
         this.powerUps = this.powerUps.filter(pu => {
             pu.update(player);
             return !pu.collected;
         });
+        console.log(`[Environment] Power-ups active: ${this.powerUps.length}/${beforeCount}`);
     }
 
     spawnPowerUp(type) {
-        const PowerUp = require('./powerup');
         if (['health', 'ammo', 'rapidfire'].includes(type)) {
-            const pu = new PowerUp(type, this);
-            this.powerUps.push(pu);
+            console.log(`[Environment] Manually spawning power-up of type: ${type}`);
+            const powerUp = new PowerUp(type, this);
+            this.powerUps.push(powerUp);
+            console.log(`[Environment] Power-ups count: ${this.powerUps.length}`);
+        } else {
+            console.warn(`[Environment] Invalid power-up type: ${type}`);
         }
+    }
+
+    // Debug method to force spawn a power-up immediately
+    forceSpawnPowerUp(type = null) {
+        if (!type) {
+            // If no type specified, randomly choose one
+            const types = ['health', 'ammo', 'rapidfire'];
+            type = types[Math.floor(Math.random() * types.length)];
+        }
+        
+        console.log(`[Environment] Force spawning power-up of type: ${type}`);
+        this.spawnPowerUp(type);
+        return `Spawned power-up of type: ${type}`;
     }
 }
 

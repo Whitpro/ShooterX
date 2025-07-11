@@ -262,7 +262,7 @@ class EnemyManager {
             const enemy = this.spawnEnemy(type);
             
             // Update spawn time
-            this.lastSpawnTime = now;
+                this.lastSpawnTime = now;
             
             // Adjust spawn cooldown based on wave number
             if (window.gameEngine && window.gameEngine.waveSystem) {
@@ -287,7 +287,7 @@ class EnemyManager {
                 enemy.update(deltaTime, window.gameEngine?.player);
             }
         });
-
+        
         // Update group behaviors
         this.updateGroups();
 
@@ -330,8 +330,8 @@ class EnemyManager {
         
         // Clean up all enemies
         this.enemies.forEach(enemy => {
-            if (enemy.model) {
-                this.scene.remove(enemy.model);
+                if (enemy.model) {
+                    this.scene.remove(enemy.model);
                 
                 // Clean up geometry and materials
                 if (enemy.model.geometry) {
@@ -363,10 +363,10 @@ class EnemyManager {
         // Reset spawn point cooldowns
         this.spawnPointLastUse.clear();
     }
-    
+
     handleHit(enemy, damage) {
         if (!enemy || !enemy.isAlive) return false;
-        
+
         // Apply damage to enemy
         enemy.takeDamage(damage);
         
@@ -384,10 +384,10 @@ class EnemyManager {
                     window.gameEngine.ui.updateScore(waveSystemState);
                 }
             }
-            
+
             return true; // Enemy was killed
         }
-        
+
         return false; // Enemy still alive
     }
 }

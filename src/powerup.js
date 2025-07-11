@@ -1,14 +1,17 @@
-import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
+import * as THREE from '../three.js-r178/three.js-r178/src/Three.js';
 
 class PowerUp {
     constructor(type, environment) {
+        console.log(`[PowerUp] Constructor called for type: ${type}`);
         this.type = type;
         this.environment = environment;
         this.collected = false;
         this.effectValue = 0;
         this.model = null;
         this.position = this.getRandomPosition();
+        console.log(`[PowerUp] Created ${type} at position:`, this.position);
         this.createModel();
+        console.log(`[PowerUp] Model created:`, this.model ? 'Success' : 'Failed');
     }
 
     getRandomPosition() {
@@ -47,6 +50,9 @@ class PowerUp {
         // Add more types here in the future
         if (this.model && this.environment && this.environment.scene) {
             this.environment.scene.add(this.model);
+            console.log(`[PowerUp] Added ${this.type} model to scene:`, this.model);
+        } else {
+            console.error(`[PowerUp] Failed to add model to scene. Model: ${!!this.model}, Environment: ${!!this.environment}, Scene: ${!!this.environment?.scene}`);
         }
     }
 
@@ -57,6 +63,7 @@ class PowerUp {
         // Simple collision: if player is close enough
         const dist = player.position.distanceTo(this.model.position);
         if (dist < 1.2) {
+            console.log(`[PowerUp] Player collected ${this.type} powerup! Distance: ${dist.toFixed(2)}`);
             this.applyEffect(player);
             this.collect();
         }

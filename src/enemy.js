@@ -554,7 +554,7 @@ class Enemy {
 
     takeDamage(amount) {
         if (!this.isAlive) return;
-        
+
         this.health -= amount;
         
         // Ensure health is within bounds
@@ -589,8 +589,8 @@ class Enemy {
         
         // Remove from scene after a delay
         setTimeout(() => {
-            if (this.model) {
-                this.scene.remove(this.model);
+        if (this.model) {
+            this.scene.remove(this.model);
                 
                 // Dispose of geometries and materials
                 if (this.model.geometry) this.model.geometry.dispose();
