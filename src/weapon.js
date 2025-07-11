@@ -6,10 +6,12 @@ class Weapon {
         this.camera = camera;
         this.damage = 25;
         this.fireRate = 0.5; // seconds
+        this._originalFireRate = 0.5; // Store the original fire rate
         this.lastShot = 0;
         this.range = 100;
         this.ammo = 30;
         this.maxAmmo = typeof maxAmmo === 'number' ? maxAmmo : 30;
+        this.infiniteAmmo = false; // Add infinite ammo property
 
         // Reload parameters
         this.isReloading = false;
@@ -134,9 +136,9 @@ class Weapon {
         const currentTime = performance.now() / 1000;
         
         // Prevent shooting if reloading or rate of fire cooldown or no ammo
-        if (this.isReloading || currentTime - this.lastShot < this.fireRate || this.ammo <= 0) {
+        if (this.isReloading || currentTime - this.lastShot < this.fireRate || (this.ammo <= 0 && !this.infiniteAmmo)) {
             // Play empty clip sound if no ammo
-            if (this.ammo <= 0) {
+            if (this.ammo <= 0 && !this.infiniteAmmo) {
                 console.log('Click! Out of ammo. Press R to reload.');
                 // Could add a sound effect for empty gun here
             }
@@ -144,7 +146,10 @@ class Weapon {
         }
 
         console.log('[Weapon] Shot fired, fireRate:', this.fireRate);
-        this.ammo--;
+        // Only decrease ammo if infinite ammo is not enabled
+        if (!this.infiniteAmmo) {
+            this.ammo--;
+        }
         this.lastShot = currentTime;
         
         // Removed auto-reload when empty
@@ -442,8 +447,8 @@ class Weapon {
     }
 
     reload() {
-        // Only reload if not at max ammo and not already reloading
-        if (this.ammo < this.maxAmmo && !this.isReloading) {
+        // Only reload if not at max ammo and not already reloading and infinite ammo is not enabled
+        if (this.ammo < this.maxAmmo && !this.isReloading && !this.infiniteAmmo) {
             // Start reloading
             this.isReloading = true;
             this.reloadStartTime = performance.now();
@@ -466,12 +471,11 @@ class Weapon {
         this.lastShot = 0;
         this.currentRecoil = 0;
         this.isRecovering = false;
-        // Restore fireRate to persistent value if set (for power-ups)
-        if (this._originalFireRate) {
-            this.fireRate = this._originalFireRate;
-        } else {
-            this.fireRate = 0.5;
-        }
+        // Restore fireRate to original value
+        this.fireRate = this._originalFireRate;
+        // Reset infinite ammo
+        this.infiniteAmmo = false;
+        
         if (this.camera) {
             this.camera.rotation.copy(this.originalRotation);
         }

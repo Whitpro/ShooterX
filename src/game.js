@@ -8,6 +8,7 @@ import EnemyManager from './enemyManager.js';
 import Environment from './environment.js';
 import Input from './input.js';
 import GAME_STATES from './gameStates.js';
+import Settings from './settings.js';
 
 // Debug mode flag
 const DEBUG = process.env.NODE_ENV === 'development';
@@ -29,6 +30,13 @@ class GameEngine {
     constructor() {
         try {
             debug('Initializing GameEngine...');
+            
+            // Make game engine accessible globally
+            window.gameEngine = this;
+            
+            // Initialize global flags
+            window.isBugReportOpen = false;
+            window.isInSettingsMenu = false;
             
             // Initialize core components
             this.scene = new THREE.Scene();
@@ -72,6 +80,7 @@ class GameEngine {
             this.isPaused = false;
             this.lastTime = 0;
             this.deltaTime = 0;
+            this._hasHadPointerLock = false; // Track if game has ever had pointer lock
             
             // Initialize Input system
             this.input = Input;
@@ -84,6 +93,12 @@ class GameEngine {
             this.ui = null;
             this.waveSystem = null;
             this.environment = null;
+            
+            // FPS limiting properties
+            this.useFrameRateLimit = false;
+            this.fpsLimit = 0;
+            this.frameTimeLimit = 0;
+            this.lastFrameTime = 0;
             
             // Screen shake parameters
             this.screenShake = {
@@ -167,6 +182,15 @@ class GameEngine {
             this.waveSystem = new Wave(this.enemyManager);
             debug('Wave system created');
             
+            // Initialize settings
+            this.settings = new Settings(this, this.ui);
+            debug('Settings created');
+            
+            // Apply settings
+            if (this.settings) {
+                this.settings.applyAllSettings();
+            }
+            
             // Make sure game engine is accessible globally
             window.gameEngine = this;
             
@@ -198,16 +222,51 @@ class GameEngine {
                     return;
                 }
                 
-                // Handle auto-pause when pointer is unlocked during gameplay
-                if (!isLocked && !this.isPaused) {
-                    debug('Auto-pausing game due to pointer unlock');
-                    this.pauseGame();
+                // Skip auto-pause if settings menu is open
+                if (window.isInSettingsMenu) {
+                    debug('Ignoring pointer lock change - settings menu is open');
+                    return;
                 }
                 
-                // Auto-resume when pointer is locked and game is paused
-                if (isLocked && this.isPaused) {
-                    debug('Auto-resuming game due to pointer lock');
-                    this.resumeGame();
+                // Skip auto-pause if console is open
+                if (window.isConsoleOpen) {
+                    debug('Ignoring pointer lock change - console is open');
+                    return;
+                }
+                
+                // When pointer lock is acquired, clear the auto-pause prevention flag
+                // This means the player has explicitly locked the pointer
+                if (isLocked) {
+                    this._preventAutoPause = false;
+                    this._hasHadPointerLock = true;
+                    
+                    // If game is paused, resume it
+                    if (this.isPaused) {
+                        debug('Auto-resuming game due to pointer lock');
+                        this.resumeGame();
+                    }
+                } else {
+                    // Skip auto-pause during the first 2 seconds after starting the game
+                    // This prevents immediate pause when starting the game
+                    const gameStartTime = this._gameStartTime || 0;
+                    const timeSinceStart = performance.now() - gameStartTime;
+                    if (timeSinceStart < 2000) {
+                        debug('Ignoring auto-pause - game just started');
+                        return;
+                    }
+                    
+                    // Skip auto-pause if the game has never had pointer lock
+                    // This prevents showing pause menu when the game first loads
+                    if (!this._hasHadPointerLock) {
+                        debug('Ignoring auto-pause - game has never had pointer lock');
+                        return;
+                    }
+                    
+                    // Handle auto-pause when pointer is unlocked during gameplay
+                    if (!this.isPaused) {
+                        debug('Auto-pausing game due to pointer unlock');
+                        this.pauseGame();
+                    }
                 }
             });
 
@@ -247,6 +306,12 @@ class GameEngine {
         try {
             debug('Starting game...');
             debug('Current state before starting:', this.state, 'isRunning:', this.isRunning);
+            
+            // Set game start time to prevent immediate auto-pause
+            this._gameStartTime = performance.now();
+            
+            // Set flag to prevent auto-pause until player has explicitly locked pointer
+            this._preventAutoPause = true;
             
             // Cancel any existing animation frames
             if (this.animationFrameId) {
@@ -379,25 +444,58 @@ class GameEngine {
             // Check if the game is ready to run
             if (!this.isRunning || this.state !== GAME_STATES.PLAYING) {
                 debug('Game loop stopped - game state:', this.state, 'isRunning:', this.isRunning);
+                requestAnimationFrame(this.gameLoop.bind(this));
                 return;
             }
-
+            
+            // Convert to seconds
+            currentTime *= 0.001;
+            
             // Calculate delta time
-            this.deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.1); // Cap at 0.1s
+            this.deltaTime = currentTime - this.lastTime;
             this.lastTime = currentTime;
-
-            // Update game if not paused
-            if (!this.isPaused) {
-                this.update(this.deltaTime);
-                
-                // Handle rendering - now asynchronous with WebGPU
-                this.render().catch(error => {
-                    debugError('Render error:', error);
-                });
+            
+            // Prevent large time jumps (e.g. when tab is inactive)
+            if (this.deltaTime > 0.1) {
+                debug('Large delta time detected:', this.deltaTime, 'clamping to 0.1');
+                this.deltaTime = 0.1;
             }
-
-            // Continue the loop
-            this.animationFrameId = requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
+            
+            // Apply FPS limiting if enabled, but don't use fixed delta time
+            // which can cause slow motion effects
+            if (this.useFrameRateLimit && this.fpsLimit > 0) {
+                const now = performance.now();
+                const elapsed = now - this.lastFrameTime;
+                
+                if (elapsed < this.frameTimeLimit) {
+                    // Skip this frame to maintain the desired frame rate
+                    requestAnimationFrame(this.gameLoop.bind(this));
+                    return;
+                }
+                
+                // Update last frame time
+                this.lastFrameTime = now;
+                
+                // DO NOT use fixed delta time as it causes slow motion
+                // Instead, use the actual measured delta time which keeps game speed consistent
+            }
+            
+            // Skip update if game is paused
+            if (this.isPaused) {
+                requestAnimationFrame(this.gameLoop.bind(this));
+                return;
+            }
+            
+            // Update game state
+            this.update(this.deltaTime);
+            
+            // Render the scene
+            this.render().catch(error => {
+                debugError('Render error:', error);
+            });
+            
+            // Continue the game loop
+            this.animationFrameId = requestAnimationFrame(this.gameLoop.bind(this));
         } catch (error) {
             debugError('Error in game loop:', error);
             console.error(error);
@@ -405,7 +503,7 @@ class GameEngine {
             // Always try to recover the game loop if possible
             if (this.isRunning && this.state === GAME_STATES.PLAYING) {
                 debug('Attempting to recover from game loop error');
-                this.animationFrameId = requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
+                this.animationFrameId = requestAnimationFrame(this.gameLoop.bind(this));
             } else {
                 this.pauseGame();
             }
@@ -597,48 +695,56 @@ class GameEngine {
     }
 
     pauseGame() {
-        if (this.isPaused) return;
+        // Don't pause if auto-pause prevention is active
+        if (this._preventAutoPause && !document.pointerLockElement) {
+            debug('Skipping auto-pause due to _preventAutoPause flag');
+            return;
+        }
+        
+        if (this.state !== GAME_STATES.PLAYING) return;
+        
         debug('Pausing game');
         this.isPaused = true;
-        // Update player state
+        this.state = GAME_STATES.PAUSED;
+        
+        // Exit pointer lock only if not in settings menu (settings menu handles its own pointer lock)
+        if (!window.isInSettingsMenu && document.pointerLockElement === document.body) {
+            document.exitPointerLock();
+        }
+        
+        // Show pause menu only if console is not open
+        if (this.ui && !window.isConsoleOpen) {
+            this.ui.showPauseMenu();
+        }
+        
+        // Notify player of pause state
         if (this.player) {
             this.player.setPaused(true);
         }
-        // Exit pointer lock
-        if (document.pointerLockElement === document.body) {
-            document.exitPointerLock();
-        }
-        // Show pause menu only if the console is not open
-        if (this.ui && (!this.ui.console || !this.ui.console.isVisible)) {
-            this.ui.hideGameplayUI();
-            this.ui.showPauseMenu();
-        }
     }
-
+    
     resumeGame() {
         if (!this.isPaused) return;
         
         debug('Resuming game');
         this.isPaused = false;
+        this.state = GAME_STATES.PLAYING;
         
-        // Update player state
-        if (this.player) {
-            this.player.setPaused(false);
-        }
-        
-        // Get pointer lock if needed
-        if (document.pointerLockElement !== document.body) {
-            document.body.requestPointerLock();
-        }
-        
-        // Update UI
+        // Hide all menus
         if (this.ui) {
             this.ui.hideAllMenus();
             this.ui.showGameplayUI();
         }
         
-        // Reset timing to prevent large delta time
-        this.lastTime = performance.now();
+        // Request pointer lock only if not in settings menu
+        if (!window.isInSettingsMenu && document.pointerLockElement !== document.body) {
+            document.body.requestPointerLock();
+        }
+        
+        // Notify player of resume state
+        if (this.player) {
+            this.player.setPaused(false);
+        }
     }
 
     togglePause() {
@@ -692,18 +798,30 @@ class GameEngine {
     }
 
     gameOver() {
-        debug('Game over');
-        this.state = GAME_STATES.GAME_OVER;
-        this.isRunning = false;
-        this.isPaused = false;
+        if (this.state === GAME_STATES.GAME_OVER) return;
         
-        // Update UI
-        this.ui.hideGameplayUI();
-        this.ui.showGameOverScreen();
-        
-        // Exit pointer lock
-        if (document.pointerLockElement === document.body) {
-            document.exitPointerLock();
+        try {
+            debug('Game over triggered');
+            this.state = GAME_STATES.GAME_OVER;
+            this.isPaused = true;
+            this.isRunning = false;
+            
+            // Check if game over is due to player death or wave completion
+            const isWaveCompletion = this.waveSystem && this.waveSystem.wave >= this.waveSystem.maxWave;
+            
+            // Show appropriate game over screen
+            if (isWaveCompletion) {
+                this.ui.showGameCompletionScreen();
+            } else {
+                this.ui.showGameOverScreen();
+            }
+            
+            // Release pointer lock
+            if (document.pointerLockElement === document.body) {
+                document.exitPointerLock();
+            }
+        } catch (error) {
+            debugError('Error in gameOver:', error);
         }
     }
 

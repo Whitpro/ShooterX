@@ -23,6 +23,7 @@ class Wave {
         this.enemiesRequired = 5;
         this.spawnPoints = [];
         this.isSpawning = false;
+        this.maxWave = 5; // Set maximum wave to 5
     }
 
     startWave() {
@@ -39,7 +40,7 @@ class Wave {
         this.score.multiplier = 1.0;
         this.isSpawning = false;
         
-        // Set up enemies for this wave
+        // Setup enemies for this wave
         this.setupWaveEnemies();
     }
 
@@ -52,9 +53,9 @@ class Wave {
         // Create enemy distribution for this wave
         let enemyTypes = [];
         
-        // Add boss every 5 waves or immediately at high waves (wave 10+)
-        if (this.wave % 5 === 0 || this.wave >= 10) {
-            enemyTypes.push(this.wave % 10 === 0 ? 'BOSS' : 'COMMANDER');
+        // Add boss every 5 waves
+        if (this.wave === 5) {
+            enemyTypes.push('BOSS');
             this.enemiesRequired = Math.max(this.enemiesRequired - 1, 1);
         }
         
@@ -62,13 +63,13 @@ class Wave {
         while (enemyTypes.length < this.enemiesRequired) {
             const roll = Math.random();
             
-            if (this.wave >= 10) {
+            if (this.wave === 5) {
                 if (roll < 0.35) enemyTypes.push('GRUNT');
                 else if (roll < 0.55) enemyTypes.push('SCOUT');
                 else if (roll < 0.75) enemyTypes.push('HEAVY');
                 else if (roll < 0.90) enemyTypes.push('SNIPER');
                 else enemyTypes.push('COMMANDER');
-            } else if (this.wave >= 5) {
+            } else if (this.wave >= 3) {
                 if (roll < 0.45) enemyTypes.push('GRUNT');
                 else if (roll < 0.70) enemyTypes.push('SCOUT');
                 else if (roll < 0.85) enemyTypes.push('HEAVY');
@@ -168,6 +169,16 @@ class Wave {
         console.log('Wave completed!', this.wave);
         this.state = 'COMPLETE';
         this.score.total += this.score.current;
+        
+        // Check if we've reached the maximum wave
+        if (this.wave >= this.maxWave) {
+            console.log('Maximum wave reached! Game completed!');
+            if (window.gameEngine) {
+                window.gameEngine.gameOver();
+            }
+            return;
+        }
+        
         this.wave++;
         
         // Update UI
@@ -219,9 +230,8 @@ class Wave {
     }
 
     setMaxWave() {
-        // Clamp to a reasonable max wave
-        const MAX_WAVE = 100;
-        this.wave = MAX_WAVE;
+        // Set to our defined max wave
+        this.wave = this.maxWave;
         this.state = 'WAITING';
         this.startWave();
         if (window.gameEngine && window.gameEngine.ui) {

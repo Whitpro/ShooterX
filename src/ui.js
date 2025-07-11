@@ -34,6 +34,43 @@ class UI {
             return;
         }
 
+        // Add CSS styles for game completion screen
+        const style = document.createElement('style');
+        style.textContent = `
+            #gameCompletionScreen {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                text-align: center;
+                color: white;
+                font-family: 'Rajdhani', 'Orbitron', sans-serif;
+                z-index: 1001;
+                display: none;
+                pointer-events: auto;
+                background: rgba(0, 0, 0, 0.8);
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+                border: 1px solid rgba(0, 255, 255, 0.2);
+                transition: all 0.3s ease-in-out;
+                backdrop-filter: blur(10px);
+                min-width: 320px;
+            }
+            #gameCompletionScreen h1 {
+                font-size: 48px;
+                margin-bottom: 30px;
+                text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+                letter-spacing: 3px;
+                text-transform: uppercase;
+            }
+            #gameCompletionScreen.visible {
+                display: flex;
+                animation: menuAppear 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            }
+        `;
+        document.head.appendChild(style);
+
         // Initialize UI
         this.setupEventListeners();
         this.initialized = true;
@@ -95,6 +132,34 @@ class UI {
         this.pauseMonsterInfoButton.style.color = '#fff';
         this.pauseMonsterInfoButton.onclick = () => {
             this.showMonsterInfoScreen();
+        };
+
+        // Add Settings button to main menu
+        this.settingsButton = document.createElement('button');
+        this.settingsButton.id = 'settingsButton';
+        this.settingsButton.className = 'menu-button';
+        this.settingsButton.textContent = 'Settings';
+        // Insert settings button after the monster info button
+        mainMenuContent.insertBefore(this.settingsButton, this.monsterInfoButton.nextSibling);
+        // Force blue background and white text
+        this.settingsButton.style.background = 'linear-gradient(135deg, #2196F3, #0D47A1)';
+        this.settingsButton.style.color = '#fff';
+        this.settingsButton.onclick = () => {
+            this.showSettingsScreen();
+        };
+
+        // Add Settings button to pause menu
+        this.pauseSettingsButton = document.createElement('button');
+        this.pauseSettingsButton.id = 'pauseSettingsButton';
+        this.pauseSettingsButton.className = 'menu-button';
+        this.pauseSettingsButton.textContent = 'Settings';
+        // Insert settings button after the monster info button
+        pauseMenuContent.insertBefore(this.pauseSettingsButton, this.pauseMonsterInfoButton.nextSibling);
+        // Force blue background and white text
+        this.pauseSettingsButton.style.background = 'linear-gradient(135deg, #2196F3, #0D47A1)';
+        this.pauseSettingsButton.style.color = '#fff';
+        this.pauseSettingsButton.onclick = () => {
+            this.showSettingsScreen();
         };
 
         // Create Monster Info screen (hidden by default)
@@ -208,6 +273,11 @@ class UI {
                 // Hide the main menu first
                 this.hideMainMenu();
                 
+                // Ensure auto-pause prevention is active
+                if (this.game) {
+                    this.game._preventAutoPause = true;
+                }
+                
                 // Start the game directly, which will show the gameplay UI
                 this.game.startGame();
                 
@@ -311,6 +381,12 @@ class UI {
         if (this.mainMenu) this.mainMenu.style.display = 'none';
         if (this.pauseMenu) this.pauseMenu.style.display = 'none';
         if (this.gameOverScreen) this.gameOverScreen.style.display = 'none';
+        if (document.getElementById('gameCompletionScreen')) {
+            document.getElementById('gameCompletionScreen').style.display = 'none';
+        }
+        if (document.getElementById('settingsScreen')) {
+            document.getElementById('settingsScreen').style.display = 'none';
+        }
     }
 
     hideGameplayUI() {
@@ -505,21 +581,26 @@ class UI {
 
     updateStaminaBar(currentStamina, maxStamina) {
         if (this.staminaBar) {
-            const staminaPercentage = (currentStamina / maxStamina) * 100;
+            // Ensure values are valid numbers
+            if (typeof currentStamina !== 'number' || isNaN(currentStamina)) {
+                console.error('Invalid stamina value:', currentStamina);
+                currentStamina = 0;
+            }
+            
+            if (typeof maxStamina !== 'number' || isNaN(maxStamina) || maxStamina <= 0) {
+                console.error('Invalid max stamina value:', maxStamina);
+                maxStamina = 100;
+            }
+            
+            // Ensure currentStamina is within bounds
+            currentStamina = Math.max(0, Math.min(currentStamina, maxStamina));
+            
+            // Calculate percentage with safety check
+            const staminaPercentage = maxStamina > 0 ? (currentStamina / maxStamina) * 100 : 0;
             
             // Update the transform of the :before element instead of width
-            this.staminaBar.style.setProperty('--stamina-scaleX', staminaPercentage / 100);
-            
-            // Update pseudo-element directly (this is the actual bar)
-            if (this.staminaBar.style.setProperty) {
-                this.staminaBar.style.setProperty('--stamina-scaleX', staminaPercentage / 100);
-            } else {
-                // Fallback for browsers not supporting CSS variables
-                const beforeElement = this.staminaBar.querySelector(':before');
-                if (beforeElement) {
-                    beforeElement.style.transform = `scaleX(${staminaPercentage / 100})`;
-                }
-            }
+            const scaleValue = staminaPercentage / 100;
+            this.staminaBar.style.setProperty('--stamina-scaleX', scaleValue);
             
             // Change color based on stamina level
             let staminaColor = 'linear-gradient(90deg, #4CAF50, #8BC34A)';
@@ -837,6 +918,168 @@ class UI {
                 this.blackOverlay.style.display = 'none';
             }, 500); // Wait for fade out to complete
         }
+    }
+
+    showGameCompletionScreen() {
+        debug('Showing game completion screen');
+        
+        // Hide other UI elements first
+        this.hideGameplayUI();
+        
+        // Create completion screen if it doesn't exist
+        let completionScreen = document.getElementById('gameCompletionScreen');
+        if (!completionScreen) {
+            completionScreen = document.createElement('div');
+            completionScreen.id = 'gameCompletionScreen';
+            completionScreen.className = 'menu';
+            completionScreen.innerHTML = `
+                <div class="menu-content">
+                    <h1 style="color: #4CAF50;">Game Complete!</h1>
+                    <p class="score">You've completed all 5 waves!</p>
+                    <p class="score">Final Score: <span id="finalCompletionScore">0</span></p>
+                    <button class="menu-button start-button" id="playAgainButton">Play Again</button>
+                    <button class="menu-button quit-button" id="quitToMenuButton">Main Menu</button>
+                </div>
+            `;
+            
+            // Make sure we have the game-ui container
+            const gameUI = document.getElementById('game-ui');
+            if (!gameUI) {
+                console.error('game-ui container not found, creating it');
+                const newGameUI = document.createElement('div');
+                newGameUI.id = 'game-ui';
+                document.body.appendChild(newGameUI);
+                newGameUI.appendChild(completionScreen);
+            } else {
+                gameUI.appendChild(completionScreen);
+            }
+            
+            // Add event listeners
+            document.getElementById('playAgainButton').addEventListener('click', () => {
+                this.hideGameCompletionScreen();
+                this.game.reset();
+                this.game.startGame();
+            });
+            
+            document.getElementById('quitToMenuButton').addEventListener('click', () => {
+                this.hideGameCompletionScreen();
+                this.game.quitToMenu();
+            });
+        }
+        
+        // Update score
+        if (this.game.waveSystem) {
+            const totalScore = this.game.waveSystem.score.total + this.game.waveSystem.score.current;
+            const scoreElement = document.getElementById('finalCompletionScore');
+            if (scoreElement) {
+                scoreElement.textContent = Math.round(totalScore);
+            }
+        }
+        
+        // Make sure all other menus are hidden
+        if (this.mainMenu) this.mainMenu.style.display = 'none';
+        if (this.pauseMenu) this.pauseMenu.style.display = 'none';
+        if (this.gameOverScreen) this.gameOverScreen.style.display = 'none';
+        
+        // Show completion screen with proper animation
+        completionScreen.style.display = 'flex';
+        
+        // Add visible class after a short delay to ensure the display property has been applied
+        setTimeout(() => {
+            completionScreen.classList.add('visible');
+            
+            // Add a staggered animation to the buttons
+            const buttons = completionScreen.querySelectorAll('button');
+            buttons.forEach((button, index) => {
+                button.style.opacity = '0';
+                button.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    button.style.opacity = '1';
+                    button.style.transform = 'translateY(0)';
+                }, 300 + (index * 100));
+            });
+            
+            // Animate the title
+            const title = completionScreen.querySelector('h1');
+            if (title) {
+                title.style.opacity = '0';
+                title.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    title.style.opacity = '1';
+                    title.style.transform = 'scale(1)';
+                }, 200);
+            }
+        }, 50);
+        
+        // Make sure pointer lock is released
+        if (document.pointerLockElement === document.body) {
+            document.exitPointerLock();
+        }
+        
+        console.log('Game completion screen should be visible now');
+    }
+
+    hideGameCompletionScreen() {
+        const completionScreen = document.getElementById('gameCompletionScreen');
+        if (completionScreen) {
+            completionScreen.style.display = 'none';
+            completionScreen.className = 'menu';
+        }
+    }
+    
+    showSettingsScreen() {
+        debug('Showing settings screen');
+        this.lastMenu = null;
+        
+        // Track which menu was open before showing settings
+        if (this.mainMenu && this.mainMenu.style.display !== 'none') {
+            this.lastMenu = 'mainMenu';
+        } else if (this.pauseMenu && this.pauseMenu.style.display !== 'none') {
+            this.lastMenu = 'pauseMenu';
+        }
+        
+        // Hide all menus
+        this.hideAllMenus();
+        
+        // Set global flag to prevent pointer lock while in settings
+        window.isInSettingsMenu = true;
+        
+        // If pointer is locked, exit pointer lock
+        if (document.pointerLockElement === document.body) {
+            document.exitPointerLock();
+        }
+        
+        // Import and show settings UI
+        import('./settings.js').then(module => {
+            const Settings = module.default;
+            if (!this.settingsUI) {
+                this.settingsUI = new Settings(this.game, this);
+            }
+            this.settingsUI.show();
+        }).catch(error => {
+            console.error('Error loading settings module:', error);
+        });
+    }
+    
+    hideSettingsScreen() {
+        debug('Hiding settings screen');
+        
+        // Reset global flag when exiting settings
+        window.isInSettingsMenu = false;
+        
+        // Hide settings UI
+        if (this.settingsUI) {
+            this.settingsUI.hide();
+        }
+        
+        // Return to previous menu
+        if (this.lastMenu === 'mainMenu') {
+            this.showMainMenu();
+        } else if (this.lastMenu === 'pauseMenu') {
+            this.showPauseMenu();
+        }
+        
+        this.lastMenu = null;
     }
 }
 

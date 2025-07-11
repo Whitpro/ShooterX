@@ -51,6 +51,8 @@ class EnemyManager {
                 }
             }
         });
+        
+        console.log(`Initialized ${this.spawnPoints.length} spawn points`);
     }
 
     queueEnemySpawn(type) {
@@ -59,6 +61,7 @@ class EnemyManager {
             return;
         }
         this.spawnQueue.push(type);
+        console.log(`Queued enemy spawn: ${type}, queue length: ${this.spawnQueue.length}`);
     }
 
     hasSpawningEnemies() {
@@ -84,6 +87,7 @@ class EnemyManager {
         // Different enemy types have different group behavior
         this.handleGroupAssignment(enemy, type);
         
+        console.log(`Spawned enemy: ${type} at position (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
         return enemy;
     }
     
@@ -246,19 +250,25 @@ class EnemyManager {
     update(deltaTime) {
         const now = performance.now();
 
-        // Process spawn queue
+        // Process spawn queue with adjusted timing for 5-wave system
         if (this.spawnQueue.length > 0 && 
-            now - this.lastSpawnTime >= this.spawnCooldown && 
+            now - this.lastSpawnTime > this.spawnCooldown && 
             this.enemies.length < this.maxEnemies) {
             
+            // Get next enemy type from queue
             const type = this.spawnQueue.shift();
+            
+            // Spawn the enemy
             const enemy = this.spawnEnemy(type);
             
-            if (enemy) {
-                this.lastSpawnTime = now;
-            } else {
-                // If spawn failed, put the type back in queue
-                this.spawnQueue.unshift(type);
+            // Update spawn time
+            this.lastSpawnTime = now;
+            
+            // Adjust spawn cooldown based on wave number
+            if (window.gameEngine && window.gameEngine.waveSystem) {
+                const currentWave = window.gameEngine.waveSystem.wave;
+                // Faster spawns in later waves
+                this.spawnCooldown = Math.max(500, 2000 - (currentWave * 300));
             }
         }
 
@@ -268,109 +278,117 @@ class EnemyManager {
             window.gameEngine.waveSystem && 
             window.gameEngine.waveSystem.isSpawning) {
             window.gameEngine.waveSystem.isSpawning = false;
+            console.log('All enemies spawned, notifying wave system');
         }
-
-        // Get player reference
-        const player = window.gameEngine?.player || null;
 
         // Update all enemies
-        this.enemies = this.enemies.filter(enemy => {
+        this.enemies.forEach(enemy => {
             if (enemy && enemy.isAlive) {
-                enemy.update(deltaTime, player);
-                return true;
+                enemy.update(deltaTime, window.gameEngine?.player);
             }
-            // Clean up dead enemies
-            if (enemy && enemy.model) {
-                this.scene.remove(enemy.model);
-            }
-            return false;
         });
-        
+
         // Update group behaviors
         this.updateGroups();
-    }
 
-    reset() {
-        console.log('EnemyManager reset started');
-        
-        // Clean up existing enemies
-        this.enemies.forEach(enemy => {
-            if (enemy) {
-                // Remove from scene if model exists
+        // Clean up dead enemies
+        this.enemies = this.enemies.filter(enemy => {
+            if (!enemy.isAlive) {
+                // Remove from group
+                const groupId = this.enemyToGroup.get(enemy);
+                if (groupId !== undefined) {
+                    this.enemyToGroup.delete(enemy);
+                }
+                
+                // Remove from scene
                 if (enemy.model) {
                     this.scene.remove(enemy.model);
+                    
+                    // Clean up geometry and materials
+                    if (enemy.model.geometry) {
+                        enemy.model.geometry.dispose();
+                    }
+                    
+                    if (enemy.model.material) {
+                        if (Array.isArray(enemy.model.material)) {
+                            enemy.model.material.forEach(mat => mat.dispose());
+                        } else {
+                            enemy.model.material.dispose();
+                        }
+                    }
                 }
                 
-                // Remove any other THREE.js objects associated with enemy
-                if (enemy.debugPath) {
-                    this.scene.remove(enemy.debugPath);
+                return false;
+            }
+            return true;
+        });
+    }
+    
+    // Reset all enemies
+    reset() {
+        console.log('Resetting enemy manager');
+        
+        // Clean up all enemies
+        this.enemies.forEach(enemy => {
+            if (enemy.model) {
+                this.scene.remove(enemy.model);
+                
+                // Clean up geometry and materials
+                if (enemy.model.geometry) {
+                    enemy.model.geometry.dispose();
                 }
                 
-                // Remove any event listeners or timers
-                if (enemy.clearTimers) {
-                    enemy.clearTimers();
+                if (enemy.model.material) {
+                    if (Array.isArray(enemy.model.material)) {
+                        enemy.model.material.forEach(mat => mat.dispose());
+                    } else {
+                        enemy.model.material.dispose();
+                    }
                 }
             }
         });
         
-        // Clear references for garbage collection
+        // Reset arrays and maps
         this.enemies = [];
         this.spawnQueue = [];
-        this.isSpawning = false;
-        this.lastSpawnTime = 0;
-        this.spawnPointLastUse.clear();
-        
-        // Reset group data
         this.enemyGroups = [];
-        this.groupLeaders.clear();
-        this.enemyToGroup.clear();
+        this.groupLeaders = new Map();
+        this.enemyToGroup = new Map();
         this.nextGroupId = 1;
+        this.lastSpawnTime = 0;
         
-        // Reinitialize spawn points to ensure they're available
-        console.log('Reinitializing spawn points');
-        this.spawnPoints = [];
-        this.initializeSpawnPoints();
+        // Reset spawn cooldown to default
+        this.spawnCooldown = 2000;
         
-        // Queue an initial enemy to start the wave
-        if (ENEMY_TYPES.GRUNT) {
-            console.log('Queuing initial enemy');
-            this.queueEnemySpawn('GRUNT');
-        }
-        
-        console.log('Enemy manager reset complete - all enemies removed and spawn points reinitialized');
+        // Reset spawn point cooldowns
+        this.spawnPointLastUse.clear();
     }
-
+    
     handleHit(enemy, damage) {
-        if (!enemy || !enemy.isAlive) return 0;
-
-        // Use enemy's takeDamage method
-        if (enemy.takeDamage(damage)) {
-            // Enemy died from this hit
-            const points = ENEMY_TYPES[enemy.type]?.points || 100;
-            
-            // Remove from enemies array
-            const index = this.enemies.indexOf(enemy);
-            if (index !== -1) {
-                this.enemies.splice(index, 1);
-            }
-            
+        if (!enemy || !enemy.isAlive) return false;
+        
+        // Apply damage to enemy
+        enemy.takeDamage(damage);
+        
+        // Check if enemy died from this hit
+        if (!enemy.isAlive) {
             // Notify wave system about the kill
             if (window.gameEngine && window.gameEngine.waveSystem) {
                 const waveSystemState = window.gameEngine.waveSystem.onEnemyKill(enemy.type);
                 
                 // Log for debugging
-                console.log('Enemy killed:', enemy.type, 'Points:', points, 'Wave system state:', waveSystemState);
+                console.log('Enemy killed:', enemy.type, 'Wave system state:', waveSystemState);
                 
                 // Update UI if available
                 if (window.gameEngine.ui) {
                     window.gameEngine.ui.updateScore(waveSystemState);
                 }
             }
-
-            return points;
+            
+            return true; // Enemy was killed
         }
-
-        return 0; // No points if enemy isn't killed
+        
+        return false; // Enemy still alive
     }
 }
 

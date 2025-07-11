@@ -77,11 +77,232 @@ class Enemy {
                           config.model.geometry.parameters.height / 2 : 1.0;
             this.model.position.y = height;
             this.scene.add(this.model);
+            
+            // Create health bar with size based on enemy type
+            const barWidth = Math.min(2.0, Math.max(1.2, config.health / 80)); // Increased size
+            const barHeight = 0.25; // Increased height
+            const yOffset = height * 2 + 0.5; // Position higher above the enemy
+            this.createHealthBar(yOffset, barWidth, barHeight);
         }
+    }
+    
+    createHealthBar(yOffset, width = 1.5, height = 0.2) {
+        // Create container for health bar
+        this.healthBarContainer = new THREE.Group();
+        this.model.add(this.healthBarContainer);
+        
+        // Position the health bar above the enemy
+        this.healthBarContainer.position.set(0, yOffset, 0);
+        
+        // Create background bar (dark red gradient)
+        const backgroundGeometry = new THREE.PlaneGeometry(width, height);
+        
+        // Create gradient texture for background
+        const bgCanvas = document.createElement('canvas');
+        bgCanvas.width = 64;
+        bgCanvas.height = 16;
+        const bgCtx = bgCanvas.getContext('2d');
+        const bgGradient = bgCtx.createLinearGradient(0, 0, 0, bgCanvas.height);
+        bgGradient.addColorStop(0, '#8B0000'); // Dark red
+        bgGradient.addColorStop(1, '#FF0000'); // Bright red
+        bgCtx.fillStyle = bgGradient;
+        bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+        
+        const bgTexture = new THREE.CanvasTexture(bgCanvas);
+        
+        const backgroundMaterial = new THREE.MeshBasicMaterial({ 
+            map: bgTexture,
+            side: THREE.DoubleSide,
+            depthTest: false,
+            transparent: true,
+            opacity: 0.9
+        });
+        
+        this.healthBarBackground = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
+        this.healthBarBackground.renderOrder = 999; // Ensure it renders on top
+        this.healthBarContainer.add(this.healthBarBackground);
+        
+        // Create foreground bar (green gradient) - same size as background
+        const foregroundGeometry = new THREE.PlaneGeometry(width, height);
+        
+        // Create gradient texture for foreground
+        const fgCanvas = document.createElement('canvas');
+        fgCanvas.width = 64;
+        fgCanvas.height = 16;
+        const fgCtx = fgCanvas.getContext('2d');
+        const fgGradient = fgCtx.createLinearGradient(0, 0, 0, fgCanvas.height);
+        fgGradient.addColorStop(0, '#00FF00'); // Bright green
+        fgGradient.addColorStop(1, '#32CD32'); // Lime green
+        fgCtx.fillStyle = fgGradient;
+        fgCtx.fillRect(0, 0, fgCanvas.width, fgCanvas.height);
+        
+        const fgTexture = new THREE.CanvasTexture(fgCanvas);
+        
+        const foregroundMaterial = new THREE.MeshBasicMaterial({ 
+            map: fgTexture,
+            side: THREE.DoubleSide,
+            depthTest: false,
+            transparent: true,
+            opacity: 1.0
+        });
+        
+        this.healthBarForeground = new THREE.Mesh(foregroundGeometry, foregroundMaterial);
+        this.healthBarForeground.renderOrder = 1000; // Ensure it renders on top of background
+        
+        // Create a clip plane for the health bar
+        // We'll use a different approach - create a container for the foreground
+        this.healthBarForegroundContainer = new THREE.Group();
+        this.healthBarForegroundContainer.position.z = 0.001; // Slightly in front of background
+        this.healthBarContainer.add(this.healthBarForegroundContainer);
+        this.healthBarForegroundContainer.add(this.healthBarForeground);
+        
+        // Add a better border around the health bar
+        // Create a slightly larger geometry for the border
+        const borderGeometry = new THREE.PlaneGeometry(width + 0.05, height + 0.05);
+        const borderMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xFFFFFF,
+            side: THREE.DoubleSide,
+            depthTest: false,
+            transparent: true,
+            opacity: 0.7,
+            wireframe: false
+        });
+        
+        this.healthBarBorder = new THREE.Mesh(borderGeometry, borderMaterial);
+        this.healthBarBorder.renderOrder = 998; // Render behind the health bar
+        this.healthBarContainer.add(this.healthBarBorder);
+        
+        // Ensure the health bar is properly initialized
+        // Force full health bar at start
+        this.healthBarForeground.scale.x = 1.0;
+        this.healthBarForeground.position.x = 0;
+        
+        // Hide health bar initially since enemy is at full health
+        this.healthBarContainer.visible = false;
+        
+        // Make health bar face upward (fixed orientation)
+        this.healthBarContainer.rotation.x = -Math.PI / 2;
+    }
+    
+    updateHealthBar() {
+        if (!this.healthBarForeground) return;
+        
+        // Calculate health percentage
+        const healthPercent = Math.max(0, Math.min(1, this.health / this.maxHealth));
+        
+        // Use clipping approach instead of scaling
+        // Create a clip geometry that's the right width
+        const width = this.healthBarForeground.geometry.parameters.width;
+        
+        // Update the foreground container's position to create a clipping effect
+        // Move the container to the left edge of the background
+        this.healthBarForegroundContainer.position.x = -width * (1 - healthPercent) / 2;
+        
+        // Create a box to clip the foreground bar
+        if (!this.clipMesh) {
+            const clipGeometry = new THREE.BoxGeometry(width * healthPercent, 
+                                                     this.healthBarForeground.geometry.parameters.height, 
+                                                     0.1);
+            const clipMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0,
+                side: THREE.DoubleSide
+            });
+            this.clipMesh = new THREE.Mesh(clipGeometry, clipMaterial);
+            this.healthBarForegroundContainer.add(this.clipMesh);
+            this.clipMesh.position.x = width * (1 - healthPercent) / 2;
+        } else {
+            // Update the clip mesh size
+            this.clipMesh.scale.x = healthPercent;
+            this.clipMesh.position.x = width * (1 - healthPercent) / 2;
+        }
+        
+        // Update health bar color based on percentage
+        if (healthPercent <= 0.25) {
+            // Critical health - create red/orange gradient
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 16;
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#FF4500'); // OrangeRed
+            gradient.addColorStop(1, '#FF8C00'); // DarkOrange
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Dispose of old texture if it exists
+            if (this.healthBarForeground.material.map) {
+                this.healthBarForeground.material.map.dispose();
+            }
+            
+            // Apply new texture
+            const texture = new THREE.CanvasTexture(canvas);
+            this.healthBarForeground.material.map = texture;
+            this.healthBarForeground.material.needsUpdate = true;
+            
+            // Make health bar pulse when critical
+            if (!this.pulseAnimation) {
+                this.pulseAnimation = setInterval(() => {
+                    if (this.healthBarForeground) {
+                        this.healthBarForeground.material.opacity = 0.7 + Math.sin(Date.now() * 0.01) * 0.3;
+                    } else {
+                        // Clean up interval if health bar is gone
+                        if (this.pulseAnimation) {
+                            clearInterval(this.pulseAnimation);
+                            this.pulseAnimation = null;
+                        }
+                    }
+                }, 100);
+            }
+        } else if (healthPercent <= 0.5) {
+            // Low health - create yellow gradient
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 16;
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#FFFF00'); // Yellow
+            gradient.addColorStop(1, '#FFA500'); // Orange
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Dispose of old texture if it exists
+            if (this.healthBarForeground.material.map) {
+                this.healthBarForeground.material.map.dispose();
+            }
+            
+            // Apply new texture
+            const texture = new THREE.CanvasTexture(canvas);
+            this.healthBarForeground.material.map = texture;
+            this.healthBarForeground.material.needsUpdate = true;
+            
+            // Stop pulse animation if it was running
+            if (this.pulseAnimation) {
+                clearInterval(this.pulseAnimation);
+                this.pulseAnimation = null;
+                this.healthBarForeground.material.opacity = 1.0;
+            }
+        } else {
+            // Normal health - keep the original green gradient
+            // Stop pulse animation if it was running
+            if (this.pulseAnimation) {
+                clearInterval(this.pulseAnimation);
+                this.pulseAnimation = null;
+                this.healthBarForeground.material.opacity = 1.0;
+            }
+        }
+        
+        // Show health bar if health is less than full
+        this.healthBarContainer.visible = healthPercent < 1 && healthPercent > 0;
     }
 
     update(deltaTime, player) {
         if (!this.isAlive || !this.model || !player) return;
+
+        // Ensure deltaTime is within reasonable bounds to prevent speed issues
+        // This helps maintain consistent movement regardless of frame rate
+        const clampedDeltaTime = Math.min(Math.max(deltaTime, 0.001), 0.1);
 
         // Update position reference
         this.position.copy(this.model.position);
@@ -91,6 +312,8 @@ class Enemy {
         const height = config.model.geometry.parameters ? 
                       config.model.geometry.parameters.height / 2 : 1.0;
         this.model.position.y = height;
+        
+        // No need to make health bar face the camera anymore - it's fixed orientation
 
         // Calculate direction to player
         const toPlayer = new THREE.Vector3();
@@ -109,7 +332,7 @@ class Enemy {
         // Handle state behaviors
         switch (this.state) {
             case 'ROAMING':
-                this.handleRoaming(deltaTime);
+                this.handleRoaming(clampedDeltaTime);
                 break;
 
             case 'CHASING':
@@ -117,7 +340,7 @@ class Enemy {
                 toPlayer.normalize();
                 
                 // Calculate movement with reduced chase speed
-                const movement = toPlayer.multiplyScalar(this.speed * this.chaseSpeedMultiplier * deltaTime);
+                const movement = toPlayer.multiplyScalar(this.speed * this.chaseSpeedMultiplier * clampedDeltaTime);
                 
                 // Try to move
                 this.tryMove(movement);
@@ -140,11 +363,11 @@ class Enemy {
 
         // Update attack cooldown
         if (this.attackCooldown > 0) {
-            this.attackCooldown -= deltaTime * 1000;
+            this.attackCooldown -= clampedDeltaTime * 1000;
         }
 
         // Check if we're stuck
-        this.checkIfStuck(deltaTime);
+        this.checkIfStuck(clampedDeltaTime);
     }
 
     handleRoaming(deltaTime) {
@@ -173,7 +396,7 @@ class Enemy {
             // Normalize direction
             toTarget.normalize();
             
-            // Calculate movement
+            // Calculate movement - ensure consistent speed regardless of frame rate
             const movement = toTarget.multiplyScalar(this.roamingSpeed * deltaTime);
             
             // Try to move
@@ -330,23 +553,88 @@ class Enemy {
     }
 
     takeDamage(amount) {
-        if (!this.isAlive) return false;
-
+        if (!this.isAlive) return;
+        
         this.health -= amount;
+        
+        // Ensure health is within bounds
+        this.health = Math.max(0, Math.min(this.maxHealth, this.health));
+        
+        // Show and update health bar
+        if (this.healthBarContainer) {
+            this.healthBarContainer.visible = true;
+            this.updateHealthBar();
+        }
         
         if (this.health <= 0) {
             this.die();
-            return true;
         }
-        
-        return false;
     }
 
     die() {
+        if (!this.isAlive) return;
+        
         this.isAlive = false;
-        if (this.model) {
-            this.scene.remove(this.model);
+        
+        // Hide health bar
+        if (this.healthBarContainer) {
+            this.healthBarContainer.visible = false;
         }
+        
+        // Clear any animations
+        if (this.pulseAnimation) {
+            clearInterval(this.pulseAnimation);
+            this.pulseAnimation = null;
+        }
+        
+        // Remove from scene after a delay
+        setTimeout(() => {
+            if (this.model) {
+                this.scene.remove(this.model);
+                
+                // Dispose of geometries and materials
+                if (this.model.geometry) this.model.geometry.dispose();
+                if (this.model.material) {
+                    if (Array.isArray(this.model.material)) {
+                        this.model.material.forEach(material => material.dispose());
+                    } else {
+                        this.model.material.dispose();
+                    }
+                }
+                
+                // Dispose of health bar resources
+                if (this.healthBarBackground) {
+                    if (this.healthBarBackground.geometry) this.healthBarBackground.geometry.dispose();
+                    if (this.healthBarBackground.material) {
+                        if (this.healthBarBackground.material.map) {
+                            this.healthBarBackground.material.map.dispose();
+                        }
+                        this.healthBarBackground.material.dispose();
+                    }
+                }
+                
+                if (this.healthBarForeground) {
+                    if (this.healthBarForeground.geometry) this.healthBarForeground.geometry.dispose();
+                    if (this.healthBarForeground.material) {
+                        if (this.healthBarForeground.material.map) {
+                            this.healthBarForeground.material.map.dispose();
+                        }
+                        this.healthBarForeground.material.dispose();
+                    }
+                }
+                
+                if (this.healthBarBorder) {
+                    if (this.healthBarBorder.geometry) this.healthBarBorder.geometry.dispose();
+                    if (this.healthBarBorder.material) this.healthBarBorder.material.dispose();
+                }
+                
+                this.model = null;
+                this.healthBarContainer = null;
+                this.healthBarBackground = null;
+                this.healthBarForeground = null;
+                this.healthBarBorder = null;
+            }
+        }, 1000);
     }
 }
 

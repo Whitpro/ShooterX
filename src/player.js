@@ -6,10 +6,17 @@ class Player {
         this.camera = camera; // Use the camera passed from GameEngine
         this.speed = 5;
         this.sprintSpeed = 8; // Sprint speed
-        this.stamina = 100; // Maximum stamina
-        this.currentStamina = 100; // Current stamina
-        this.staminaDrain = 25; // Stamina drain per second while sprinting
-        this.staminaRegen = 20; // Stamina regeneration per second while not sprinting
+        
+        // Stamina system - completely rewritten
+        this._stamina = {
+            max: 100,
+            current: 100,
+            drainRate: 25,  // per second while sprinting
+            regenRate: 20,  // per second while not sprinting
+            canSprint: true,
+            wasSprintingLastFrame: false
+        };
+        
         this.jumpForce = 5;
         this.gravity = 9.8;
         this.velocity = new THREE.Vector3();
@@ -23,6 +30,7 @@ class Player {
         this.isPaused = false;
         this.isGodMode = false;
         this.infiniteJump = false;
+        this.isDead = false;
         
         // Camera view mode: 'firstPerson' or 'topDown'
         this.viewMode = 'firstPerson';
@@ -56,7 +64,6 @@ class Player {
         // Setup pointer lock for first-person mode
         this.setupPointerLock();
         
-        console.log("Player initialized with improved camera system");
     }
 
     createPlayerModel() {
@@ -72,9 +79,17 @@ class Player {
         // Add click handler to request pointer lock
         document.addEventListener('click', () => {
             if (window.isBugReportOpen) return; // Prevent pointer lock if bug report is open
+            if (window.isInSettingsMenu) return; // Prevent pointer lock if settings menu is open
+            if (window.isConsoleOpen) return; // Prevent pointer lock if console is open
+            
+            // Only request pointer lock in first-person mode and when not paused
             if (!this.isPointerLocked && !this.isPaused && this.viewMode === 'firstPerson') {
                 document.body.requestPointerLock();
-                console.log('Requesting pointer lock');
+                
+                // If game has a _preventAutoPause flag, clear it when player explicitly requests pointer lock
+                if (window.gameEngine && window.gameEngine._preventAutoPause) {
+                    window.gameEngine._preventAutoPause = false;
+                }
             }
         });
         
@@ -85,22 +100,34 @@ class Player {
                 document.body.style.cursor = 'default';
                 return;
             }
+            
+            // Don't lock pointer if settings menu is open
+            if (window.isInSettingsMenu) {
+                if (document.pointerLockElement === document.body) {
+                    document.exitPointerLock();
+                }
+                this.isPointerLocked = false;
+                document.body.style.cursor = 'default';
+                return;
+            }
+            
             this.isPointerLocked = document.pointerLockElement === document.body;
             
             if (this.isPointerLocked) {
-                console.log('Pointer locked');
                 document.body.style.cursor = 'none';
                 // Reset movement buffer on pointer lock
                 this.movementBuffer = [];
                 this.lastDelta = { x: 0, y: 0 };
             } else {
-                console.log('Pointer unlocked');
                 document.body.style.cursor = 'default';
             }
         });
         
         // Handle mouse movement for first-person camera
         document.addEventListener('mousemove', (event) => {
+            // Skip mouse movement if settings menu is open
+            if (window.isInSettingsMenu) return;
+            
             if (this.isPointerLocked && this.viewMode === 'firstPerson') {
                 // Get mouse movement with safety checks
                 const movementX = event.movementX || 0;
@@ -163,7 +190,6 @@ class Player {
     
     toggleViewMode() {
         this.viewMode = this.viewMode === 'firstPerson' ? 'topDown' : 'firstPerson';
-        console.log(`Switched to ${this.viewMode} view`);
         
         // Exit pointer lock if switching to top-down
         if (this.viewMode === 'topDown' && document.pointerLockElement === document.body) {
@@ -223,11 +249,6 @@ class Player {
             if (input.isKeyPressed('s')) moveDirection.sub(forward);
             if (input.isKeyPressed('a')) moveDirection.sub(right);  // A moves left (subtract right)
             if (input.isKeyPressed('d')) moveDirection.add(right);  // D moves right (add right)
-            
-            // Remove up/down movement with Q/E in first-person mode
-            // const up = new THREE.Vector3(0, 1, 0);
-            // if (input.isKeyPressed('e')) moveDirection.add(up);
-            // if (input.isKeyPressed('q')) moveDirection.sub(up);
         } else {
             // Top-down view: direct cardinal movement
             const forward = new THREE.Vector3(0, 0, -1);   // Forward is always -Z
@@ -242,16 +263,24 @@ class Player {
             if (input.isKeyPressed('d')) moveDirection.add(right);  // D moves right (add right)
         }
         
-        // Handle sprinting
+        // COMPLETELY REWRITTEN STAMINA & SPRINT HANDLING
+        // =============================================
+        
+        // 1. Determine if we should be sprinting
         let currentSpeed = this.speed;
-        if (input.isKeyPressed('shift') && this.currentStamina > 0 && moveDirection.length() > 0) {
+        const isMoving = moveDirection.length() > 0;
+        const isShiftPressed = input.isKeyPressed('shift');
+        const isSprinting = isShiftPressed && isMoving && this._stamina.canSprint;
+        
+        // 2. Apply sprint speed if sprinting
+        if (isSprinting) {
             currentSpeed = this.sprintSpeed;
-            this.currentStamina = Math.max(0, this.currentStamina - this.staminaDrain * deltaTime);
-        } else if (!input.isKeyPressed('shift')) {
-            this.currentStamina = Math.min(this.stamina, this.currentStamina + this.staminaRegen * deltaTime);
         }
-
-        // Normalize and apply movement
+        
+        // 3. Update stamina based on sprinting state
+        this.updateStamina(deltaTime, isSprinting);
+        
+        // 4. Normalize and apply movement
         if (moveDirection.length() > 0) {
             moveDirection.normalize();
             moveDirection.multiplyScalar(currentSpeed * deltaTime);
@@ -359,13 +388,36 @@ class Player {
         }
     }
 
-    // Add stamina getter methods
+    // Getter for current stamina
     getStamina() {
-        return this.currentStamina;
+        return this._stamina.current;
     }
-
+    
+    // Getter for max stamina
     getMaxStamina() {
-        return this.stamina;
+        return this._stamina.max;
+    }
+    
+    // Method to handle stamina changes
+    updateStamina(deltaTime, isSprinting) {
+        if (isSprinting) {
+            // Drain stamina while sprinting
+            this._stamina.current -= this._stamina.drainRate * deltaTime;
+            
+        } else {
+            // Regenerate stamina when not sprinting
+            this._stamina.current += this._stamina.regenRate * deltaTime;
+            
+        }
+        
+        // Ensure stamina stays within bounds
+        this._stamina.current = Math.max(0, Math.min(this._stamina.current, this._stamina.max));
+        
+        // Update canSprint flag
+        this._stamina.canSprint = this._stamina.current > 0;
+        
+        // Track sprinting state for this frame
+        this._stamina.wasSprintingLastFrame = isSprinting;
     }
 
     reset() {
@@ -391,7 +443,13 @@ class Player {
         
         // Reset stats
         this.health = this.maxHealth;
-        this.currentStamina = this.stamina;
+        
+        // Reset stamina system
+        this._stamina.current = this._stamina.max;
+        this._stamina.canSprint = true;
+        this._stamina.wasSprintingLastFrame = false;
+        
+        this.isDead = false;
         
         // Reset state
         this.isPointerLocked = false;

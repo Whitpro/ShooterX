@@ -1,5 +1,7 @@
 // Import BugReport module
 import BugReport from './bugReport.js';
+import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
+import { ENEMY_TYPES } from './enemyTypes.js';
 
 class Console {
     constructor(game) {
@@ -24,10 +26,17 @@ class Console {
             'infinitejump': () => this.toggleInfiniteJump(),
             'speed': (value) => this.setPlayerSpeed(value),
             'spawnpowerup': (type) => this.spawnPowerUp(type),
-            'report': () => this.reportBug()
+            'report': () => this.reportBug(),
+            'rapidfire': (value) => this.toggleRapidFire(value),
+            'infiniteammo': () => this.toggleInfiniteAmmo()
         };
         this.rgbMode = true;
         this._rgbHue = 0;
+        
+        // Auto-search properties
+        this.suggestionsVisible = false;
+        this.selectedSuggestionIndex = -1;
+        this.filteredSuggestions = [];
 
         this.createConsoleUI();
         this.setupEventListeners();
@@ -74,6 +83,36 @@ class Console {
                     0% { filter: hue-rotate(0deg);}
                     100% { filter: hue-rotate(360deg);}
                 }
+                
+                #console-suggestions {
+                    position: absolute;
+                    bottom: 100%;
+                    left: 0;
+                    right: 0;
+                    background: rgba(0, 0, 0, 0.9);
+                    border: 1px solid #00ff00;
+                    border-bottom: none;
+                    border-radius: 5px 5px 0 0;
+                    max-height: 150px;
+                    overflow-y: auto;
+                    display: none;
+                    z-index: 1000;
+                }
+                
+                .console-suggestion {
+                    padding: 5px 10px;
+                    cursor: pointer;
+                    color: #00ff00;
+                    font-family: monospace;
+                }
+                
+                .console-suggestion.selected {
+                    background: rgba(0, 255, 0, 0.3);
+                }
+                
+                .console-suggestion:hover {
+                    background: rgba(0, 255, 0, 0.2);
+                }
             `;
             document.head.appendChild(style);
         }
@@ -119,10 +158,15 @@ class Console {
             margin-bottom: 10px;
             font-size: 12px;
         `;
+        
+        // Create suggestions container
+        this.suggestionsElement = document.createElement('div');
+        this.suggestionsElement.id = 'console-suggestions';
 
         // Add elements to console
         this.consoleElement.appendChild(this.outputElement);
         this.consoleElement.appendChild(this.inputElement);
+        this.consoleElement.appendChild(this.suggestionsElement);
         document.body.appendChild(this.consoleElement);
     }
 
@@ -142,20 +186,180 @@ class Console {
             if (e.key === 'Enter') {
                 this.executeCommand(this.inputElement.value);
                 this.inputElement.value = '';
+                this.hideSuggestions();
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                this.navigateHistory('up');
+                if (this.suggestionsVisible) {
+                    this.navigateSuggestions('up');
+                } else {
+                    this.navigateHistory('up');
+                }
             } else if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                this.navigateHistory('down');
+                if (this.suggestionsVisible) {
+                    this.navigateSuggestions('down');
+                } else {
+                    this.navigateHistory('down');
+                }
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                if (this.suggestionsVisible && this.selectedSuggestionIndex >= 0) {
+                    this.selectSuggestion(this.selectedSuggestionIndex);
+                }
+            } else if (e.key === 'Escape') {
+                if (this.suggestionsVisible) {
+                    this.hideSuggestions();
+                } else {
+                    this.hide();
+                }
             }
         });
+        
+        // Handle input changes for auto-search
+        this.inputElement.addEventListener('input', () => {
+            this.updateSuggestions();
+        });
+        
+        // Handle clicks on suggestions
+        this.suggestionsElement.addEventListener('click', (e) => {
+            const suggestionElement = e.target.closest('.console-suggestion');
+            if (suggestionElement) {
+                const index = parseInt(suggestionElement.dataset.index, 10);
+                if (!isNaN(index)) {
+                    this.selectSuggestion(index);
+                }
+            }
+        });
+    }
+    
+    // Filter commands based on input
+    updateSuggestions() {
+        const input = this.inputElement.value.toLowerCase().trim();
+        
+        if (!input) {
+            this.hideSuggestions();
+            return;
+        }
+        
+        // Filter commands that match the input
+        this.filteredSuggestions = Object.keys(this.commands)
+            .filter(cmd => cmd.toLowerCase().includes(input))
+            .sort((a, b) => {
+                // Sort by relevance - exact matches first, then by starting with, then alphabetically
+                const aStartsWith = a.toLowerCase().startsWith(input);
+                const bStartsWith = b.toLowerCase().startsWith(input);
+                
+                if (aStartsWith && !bStartsWith) return -1;
+                if (!aStartsWith && bStartsWith) return 1;
+                return a.localeCompare(b);
+            });
+        
+        if (this.filteredSuggestions.length > 0) {
+            this.showSuggestions();
+        } else {
+            this.hideSuggestions();
+        }
+    }
+    
+    // Display the suggestions
+    showSuggestions() {
+        this.suggestionsElement.innerHTML = '';
+        this.filteredSuggestions.forEach((suggestion, index) => {
+            const element = document.createElement('div');
+            element.className = 'console-suggestion';
+            element.textContent = suggestion;
+            element.dataset.index = index;
+            this.suggestionsElement.appendChild(element);
+        });
+        
+        this.suggestionsElement.style.display = 'block';
+        this.suggestionsVisible = true;
+        this.selectedSuggestionIndex = -1;
+    }
+    
+    // Hide the suggestions
+    hideSuggestions() {
+        this.suggestionsElement.style.display = 'none';
+        this.suggestionsVisible = false;
+        this.selectedSuggestionIndex = -1;
+    }
+    
+    // Navigate through suggestions with arrow keys
+    navigateSuggestions(direction) {
+        if (!this.suggestionsVisible || this.filteredSuggestions.length === 0) return;
+        
+        // Remove selection from current suggestion
+        if (this.selectedSuggestionIndex >= 0) {
+            const currentElement = this.suggestionsElement.children[this.selectedSuggestionIndex];
+            if (currentElement) {
+                currentElement.classList.remove('selected');
+            }
+        }
+        
+        // Update selection index
+        if (direction === 'up') {
+            if (this.selectedSuggestionIndex <= 0) {
+                this.selectedSuggestionIndex = this.filteredSuggestions.length - 1;
+            } else {
+                this.selectedSuggestionIndex--;
+            }
+        } else {
+            if (this.selectedSuggestionIndex >= this.filteredSuggestions.length - 1) {
+                this.selectedSuggestionIndex = 0;
+            } else {
+                this.selectedSuggestionIndex++;
+            }
+        }
+        
+        // Apply selection to new element
+        const newElement = this.suggestionsElement.children[this.selectedSuggestionIndex];
+        if (newElement) {
+            newElement.classList.add('selected');
+            newElement.scrollIntoView({ block: 'nearest' });
+        }
+    }
+    
+    // Select a suggestion and apply it to input
+    selectSuggestion(index) {
+        if (index >= 0 && index < this.filteredSuggestions.length) {
+            this.inputElement.value = this.filteredSuggestions[index];
+            this.inputElement.focus();
+            this.hideSuggestions();
+        }
+    }
+    
+    // Navigate command history
+    navigateHistory(direction) {
+        if (this.commandHistory.length === 0) return;
+        
+        if (direction === 'up') {
+            if (this.historyIndex < this.commandHistory.length - 1) {
+                this.historyIndex++;
+                this.inputElement.value = this.commandHistory[this.historyIndex];
+            }
+        } else {
+            if (this.historyIndex > 0) {
+                this.historyIndex--;
+                this.inputElement.value = this.commandHistory[this.historyIndex];
+            } else if (this.historyIndex === 0) {
+                this.historyIndex = -1;
+                this.inputElement.value = '';
+            }
+        }
+        
+        // Move cursor to end of input
+        setTimeout(() => {
+            this.inputElement.selectionStart = this.inputElement.value.length;
+            this.inputElement.selectionEnd = this.inputElement.value.length;
+        }, 0);
     }
 
     show() {
         this.isVisible = true;
         this.consoleElement.style.display = 'block';
         this.inputElement.focus();
+        // Set global flag to prevent pointer lock events from pausing the game
+        window.isConsoleOpen = true;
         // Display the report bug message when opening the console
         this.log("type report to report a bug");
         // Pause the game if possible
@@ -163,11 +367,17 @@ class Console {
             this.game.pauseGame();
             this._pausedForConsole = true;
         }
+        // Clear suggestions
+        this.hideSuggestions();
     }
 
     hide() {
         this.isVisible = false;
         this.consoleElement.style.display = 'none';
+        // Clear global flag
+        window.isConsoleOpen = false;
+        // Hide suggestions
+        this.hideSuggestions();
         // Resume the game if we paused it for the console
         if (this.game && typeof this.game.resumeGame === 'function' && this._pausedForConsole) {
             this.game.resumeGame();
@@ -200,6 +410,9 @@ class Console {
         } else {
             this.log(`Unknown command: ${command}`, 'error');
         }
+        
+        // Clear suggestions
+        this.hideSuggestions();
     }
 
     log(message, type = 'info') {
@@ -218,9 +431,24 @@ class Console {
 
     showHelp() {
         this.log('Available commands:');
-        Object.keys(this.commands).forEach(cmd => {
-            this.log(`- ${cmd}`);
-        });
+        this.log('- help: Show this help message');
+        this.log('- clear: Clear console output');
+        this.log('- version: Show game version');
+        this.log('- fps: Show current FPS');
+        this.log('- god: Toggle god mode');
+        this.log('- killall: Kill all enemies');
+        this.log('- spawn [type]: Spawn an enemy of specified type');
+        this.log('- ammo: Refill ammo');
+        this.log('- health: Restore health');
+        this.log('- freecam: Toggle free camera mode');
+        this.log('- setmaxwave: Set wave to maximum');
+        this.log('- rgb: Toggle RGB mode in console');
+        this.log('- infinitejump: Toggle infinite jump');
+        this.log('- speed [value]: Set player movement speed');
+        this.log('- spawnpowerup [type]: Spawn a power-up (health/ammo/rapidfire)');
+        this.log('- report: Report a bug');
+        this.log('- rapidfire [rate]: Toggle rapid fire mode (optional rate in seconds)');
+        this.log('- infiniteammo: Toggle infinite ammo');
     }
 
     clearConsole() {
@@ -376,6 +604,47 @@ class Console {
         } else {
             this.log('Bug reporting module not initialized properly', 'error');
         }
+    }
+    
+    toggleRapidFire(value) {
+        if (!this.game || !this.game.weapon) {
+            this.log('Error: Weapon not available', 'error');
+            return;
+        }
+        
+        // Store original fire rate if not already stored
+        if (!this.game.weapon._originalFireRate) {
+            this.game.weapon._originalFireRate = this.game.weapon.fireRate;
+        }
+        
+        // Parse fire rate value if provided
+        let fireRate = 0.05; // Default super fast fire rate
+        if (value) {
+            const parsedValue = parseFloat(value);
+            if (!isNaN(parsedValue) && parsedValue > 0) {
+                fireRate = parsedValue;
+            }
+        }
+        
+        // Toggle rapid fire
+        if (this.game.weapon.fireRate === this.game.weapon._originalFireRate) {
+            // Enable rapid fire
+            this.game.weapon.fireRate = fireRate;
+            this.log(`Rapid fire enabled! Fire rate set to ${fireRate} seconds`);
+        } else {
+            // Disable rapid fire
+            this.game.weapon.fireRate = this.game.weapon._originalFireRate;
+            this.log(`Rapid fire disabled. Fire rate restored to ${this.game.weapon.fireRate} seconds`);
+        }
+    }
+    
+    toggleInfiniteAmmo() {
+        if (!this.game || !this.game.weapon) {
+            this.log('Error: Weapon not available', 'error');
+            return;
+        }
+        this.game.weapon.infiniteAmmo = !this.game.weapon.infiniteAmmo;
+        this.log(this.game.weapon.infiniteAmmo ? 'Infinite ammo enabled!' : 'Infinite ammo disabled.');
     }
 }
 
