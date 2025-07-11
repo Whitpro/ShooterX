@@ -456,7 +456,7 @@ class Console {
     }
 
     showVersion() {
-        this.log('ShooterX v1.2.6');
+        this.log('ShooterX v1.2.7');
     }
 
     showFPS() {

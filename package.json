@@ -1,6 +1,6 @@
 {
   "name": "shooter-x",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "description": "A 3D shooting game built with Three.js and Electron",
   "main": "src/main.js",
   "type": "module",
