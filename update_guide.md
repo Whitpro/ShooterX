@@ -96,7 +96,13 @@ To check:
 
 ## 7. Working with Development Branches
 
-### Setting Up a Dev Branch
+### Branch Structure
+
+- `main`: Stable production releases only
+- `dev`: Primary development branch, should be relatively stable
+- `test`: Experimental features and testing, may be unstable
+
+### Setting Up Development Branches
 
 ```bash
 # Create and switch to a new dev branch
@@ -104,14 +110,23 @@ git checkout -b dev
 
 # Push the dev branch to GitHub
 git push -u origin dev
+
+# Create and switch to a test branch
+git checkout -b test
+
+# Push the test branch to GitHub
+git push -u origin test
 ```
 
 ### Development Workflow
 
-1. Always develop new features on the dev branch:
+1. Development workflow with branches:
    ```bash
-   # Switch to dev branch
+   # For regular development work
    git checkout dev
+   
+   # For experimental features or testing
+   git checkout test
    
    # Make your changes
    # ...
@@ -120,45 +135,63 @@ git push -u origin dev
    git add .
    git commit -m "Add new feature"
    
-   # Push to dev branch
-   git push origin dev
+   # Push to appropriate branch
+   git push origin dev  # or git push origin test
    ```
 
-2. When ready to release, merge dev into main:
+2. Merging between branches:
    ```bash
-   # Switch to main branch
+   # Test → Dev (when experimental features are stable)
+   git checkout dev
+   git merge test
+   git push origin dev
+   
+   # Dev → Main (for releases)
    git checkout main
-   
-   # Merge changes from dev branch
    git merge dev
-   
-   # Push to main
    git push origin main
    ```
 
-3. Keep dev branch updated with main:
+3. Keeping branches updated:
    ```bash
-   # Switch to dev branch
+   # Update test with changes from dev
+   git checkout test
+   git merge dev
+   git push origin test
+   
+   # Update dev with changes from main
    git checkout dev
-   
-   # Merge changes from main
    git merge main
-   
-   # Push updated dev branch
    git push origin dev
    ```
 
+### Deleting Branches
+
+When a branch is no longer needed (e.g., after merging):
+
+```bash
+# Switch to a different branch first
+git checkout dev
+
+# Delete local branch
+git branch -d branch-name
+
+# Delete remote branch
+git push origin --delete branch-name
+```
+
 ### Branch Management Tips
 
-- Use dev for ongoing development
-- Use main for stable releases only
-- Create feature branches from dev for major features:
+- Use `main` for stable releases only
+- Use `dev` for ongoing development that's relatively stable
+- Use `test` for experimental features and testing
+- Create feature branches for specific features:
   ```bash
   git checkout dev
   git checkout -b feature/new-weapons
   ```
-- Test thoroughly before merging to main
-- GitHub Pages will use the main branch, not dev
+- Test thoroughly before merging to higher branches
+- GitHub Pages will use the main branch, not dev or test
 
 ## Version Numbering Best Practices
 
