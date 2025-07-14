@@ -9,6 +9,13 @@ try {
   app = electron.app;
   BrowserWindow = electron.BrowserWindow;
   ipcMain = electron.ipcMain;
+  
+  // Enable WebGPU, ignore GPU blocklist, and ensure hardware acceleration
+  app.commandLine.appendSwitch('enable-unsafe-webgpu');
+  app.commandLine.appendSwitch('ignore-gpu-blocklist');
+  app.commandLine.appendSwitch('enable-gpu-rasterization');
+  app.commandLine.appendSwitch('enable-zero-copy');
+  app.commandLine.appendSwitch('enable-webgpu-developer-features');
 } catch (error) {
   console.log('Electron not available in this environment. Running in server-only mode.');
   // Create mock objects for server environment

@@ -32,7 +32,7 @@ class Player {
         this.infiniteJump = false;
         this.isDead = false;
         
-        // Camera view mode: 'firstPerson' or 'topDown'
+        // Camera view mode: 'firstPerson', 'thirdPerson', or 'topDown'
         this.viewMode = 'firstPerson';
         
         // Player position (separate from camera)
@@ -40,6 +40,12 @@ class Player {
         
         // First-person camera properties
         this.cameraOffset = new THREE.Vector3(0, 0.5, 0); // Head height reduced
+        
+        // Third-person camera properties
+        this.thirdPersonDistance = 4.0; // Distance behind player
+        this.thirdPersonHeight = 1.5;   // Height above player
+        this.thirdPersonOffset = new THREE.Vector3(0, this.thirdPersonHeight, this.thirdPersonDistance);
+        
         this.lookDirection = new THREE.Vector3(0, 0, -1); // Looking forward
         
         // Camera smoothing properties
@@ -50,7 +56,21 @@ class Player {
         this.movementBuffer = []; // Buffer for mouse movements to reduce jitter
         this.bufferSize = 3; // Number of frames to average
         
-        // Create a simple player representation (a cube for now)
+        // Animation properties
+        this.animationState = 'idle'; // idle, walking, running, jumping
+        this.animationTime = 0;
+        this.animationSpeed = {
+            idle: 1.0,
+            walking: 1.5,
+            running: 2.5
+        };
+        this.bobAmount = {
+            idle: 0.03,
+            walking: 0.05,
+            running: 0.08
+        };
+        
+        // Create player models
         this.createPlayerModel();
         
         // Set initial camera position based on view mode
@@ -67,12 +87,133 @@ class Player {
     }
 
     createPlayerModel() {
-        // Create a smaller player model (cube)
-        const geometry = new THREE.BoxGeometry(0.6, 1.4, 0.6); // Smaller dimensions
-        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-        this.model = new THREE.Mesh(geometry, material);
-        this.model.position.copy(this.position);
-        this.scene.add(this.model);
+        // Create a group to hold all player models
+        this.modelGroup = new THREE.Group();
+        this.scene.add(this.modelGroup);
+        
+        // Create simple box model (used for first-person shadows and top-down view)
+        const boxGeometry = new THREE.BoxGeometry(0.6, 1.4, 0.6);
+        const boxMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        this.boxModel = new THREE.Mesh(boxGeometry, boxMaterial);
+        this.modelGroup.add(this.boxModel);
+        
+        // Create detailed player model for third-person view
+        this.createDetailedPlayerModel();
+        
+        // Position the model group
+        this.modelGroup.position.copy(this.position);
+    }
+    
+    createDetailedPlayerModel() {
+        // Create a detailed humanoid model for third-person view
+        this.detailedModel = new THREE.Group();
+        
+        // Body parts with better materials
+        const bodyMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x3366ff,
+            shininess: 30
+        });
+        
+        // Torso - positioned lower
+        const torsoGeometry = new THREE.BoxGeometry(0.6, 0.7, 0.3);
+        const torso = new THREE.Mesh(torsoGeometry, bodyMaterial);
+        torso.position.y = 0.2; // Lower from 0.35 to 0.2
+        this.detailedModel.add(torso);
+        this.torso = torso; // Store reference for animations
+        
+        // Head - smooth sphere with no jagged parts
+        const headGeometry = new THREE.SphereGeometry(0.2, 24, 24); // Higher resolution sphere
+        const headMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xffcc99,
+            shininess: 20
+        });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 0.7;
+        this.detailedModel.add(head);
+        this.head = head; // Store reference for animations
+        
+        // Arms - positioned lower
+        const armGeometry = new THREE.BoxGeometry(0.2, 0.6, 0.2);
+        
+        // Left arm
+        const leftArm = new THREE.Mesh(armGeometry, bodyMaterial);
+        leftArm.position.set(-0.4, 0.15, 0); // Lower from 0.3 to 0.15
+        this.detailedModel.add(leftArm);
+        this.leftArm = leftArm; // Store reference for animations
+        
+        // Right arm
+        const rightArm = new THREE.Mesh(armGeometry, bodyMaterial);
+        rightArm.position.set(0.4, 0.15, 0); // Lower from 0.3 to 0.15
+        this.detailedModel.add(rightArm);
+        this.rightArm = rightArm; // Store reference for animations
+        
+        // Legs - positioned lower
+        const legGeometry = new THREE.BoxGeometry(0.25, 0.7, 0.25);
+        const legMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x222244,
+            shininess: 10
+        });
+        
+        // Left leg
+        const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+        leftLeg.position.set(-0.2, -0.5, 0); // Lower from -0.35 to -0.5
+        this.detailedModel.add(leftLeg);
+        this.leftLeg = leftLeg; // Store reference for animations
+        
+        // Right leg
+        const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+        rightLeg.position.set(0.2, -0.5, 0); // Lower from -0.35 to -0.5
+        this.detailedModel.add(rightLeg);
+        this.rightLeg = rightLeg; // Store reference for animations
+        
+        // Add weapon to right hand
+        const weaponGroup = new THREE.Group();
+        
+        // Gun body - larger for third-person view
+        const gunGeometry = new THREE.BoxGeometry(0.15, 0.15, 0.6); // Increased size
+        const gunMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+        const gun = new THREE.Mesh(gunGeometry, gunMaterial);
+        weaponGroup.add(gun);
+        
+        // Barrel - larger for third-person view
+        const barrelGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.7, 8); // Increased size
+        const barrelMaterial = new THREE.MeshPhongMaterial({ color: 0x222222 });
+        const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
+        barrel.rotation.x = Math.PI / 2;
+        barrel.position.z = 0.35; // Adjusted for larger gun
+        weaponGroup.add(barrel);
+        
+        // Add a grip to make the gun more visible
+        const gripGeometry = new THREE.BoxGeometry(0.1, 0.25, 0.1);
+        const gripMaterial = new THREE.MeshPhongMaterial({ color: 0x444444 });
+        const grip = new THREE.Mesh(gripGeometry, gripMaterial);
+        grip.position.y = -0.15;
+        grip.position.z = -0.15;
+        weaponGroup.add(grip);
+        
+        // Position weapon in right hand - pointing forward and more to the front
+        weaponGroup.position.set(0.4, 0.15, -0.3);  // Moved more to the front (z increased)
+        weaponGroup.rotation.y = Math.PI;          // 180 degree rotation
+        weaponGroup.rotation.z = 0;                // No tilt
+        this.detailedModel.add(weaponGroup);
+        this.weapon = weaponGroup; // Store reference for animations
+        
+        // Set up shadows for all parts
+        this.detailedModel.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+        
+        // Add the detailed model to the model group
+        this.modelGroup.add(this.detailedModel);
+        
+        // Initially hide detailed model
+        this.detailedModel.visible = false;
+        
+        // Lower the entire model slightly
+        this.detailedModel.position.y = -0.2; // Add an overall offset to lower the model
     }
     
     setupPointerLock() {
@@ -82,8 +223,9 @@ class Player {
             if (window.isInSettingsMenu) return; // Prevent pointer lock if settings menu is open
             if (window.isConsoleOpen) return; // Prevent pointer lock if console is open
             
-            // Only request pointer lock in first-person mode and when not paused
-            if (!this.isPointerLocked && !this.isPaused && this.viewMode === 'firstPerson') {
+            // Request pointer lock in first-person and third-person modes when not paused
+            if (!this.isPointerLocked && !this.isPaused && 
+                (this.viewMode === 'firstPerson' || this.viewMode === 'thirdPerson')) {
                 document.body.requestPointerLock();
                 
                 // If game has a _preventAutoPause flag, clear it when player explicitly requests pointer lock
@@ -123,12 +265,13 @@ class Player {
             }
         });
         
-        // Handle mouse movement for first-person camera
+        // Handle mouse movement for camera control
         document.addEventListener('mousemove', (event) => {
             // Skip mouse movement if settings menu is open
             if (window.isInSettingsMenu) return;
             
-            if (this.isPointerLocked && this.viewMode === 'firstPerson') {
+            if (this.isPointerLocked && 
+                (this.viewMode === 'firstPerson' || this.viewMode === 'thirdPerson')) {
                 // Get mouse movement with safety checks
                 const movementX = event.movementX || 0;
                 const movementY = event.movementY || 0;
@@ -177,6 +320,9 @@ class Player {
                 
                 // Update camera immediately
                 this.updateCameraPosition();
+                
+                // In third-person mode, rotate the detailed model to face the look direction
+                this.updatePlayerRotation();
             }
         });
         
@@ -188,16 +334,59 @@ class Player {
         });
     }
     
-    toggleViewMode() {
-        this.viewMode = this.viewMode === 'firstPerson' ? 'topDown' : 'firstPerson';
-        
-        // Exit pointer lock if switching to top-down
-        if (this.viewMode === 'topDown' && document.pointerLockElement === document.body) {
-            document.exitPointerLock();
+    updatePlayerRotation() {
+        // Always rotate the player model to face the look direction
+        if (this.detailedModel) {
+            // Calculate the angle between the look direction and the negative z-axis
+            const angle = Math.atan2(this.lookDirection.x, -this.lookDirection.z);
+            
+            // Apply rotation immediately for more responsive movement
+            this.detailedModel.rotation.y = angle;
+            
+            // Also rotate the weapon to match player orientation
+            if (this.weapon) {
+                // Keep weapon rotation aligned with player's forward direction
+                this.weapon.rotation.y = Math.PI; // Keep pointing forward relative to player
+            }
         }
+    }
+    
+    toggleViewMode() {
+        // Cycle through view modes: firstPerson -> thirdPerson -> topDown -> firstPerson
+        if (this.viewMode === 'firstPerson') {
+            this.viewMode = 'thirdPerson';
+        } else if (this.viewMode === 'thirdPerson') {
+            this.viewMode = 'topDown';
+            // Exit pointer lock when switching to top-down
+            if (document.pointerLockElement === document.body) {
+                document.exitPointerLock();
+            }
+        } else {
+            this.viewMode = 'firstPerson';
+        }
+        
+        // Update model visibility based on view mode
+        this.updateModelVisibility();
         
         // Update camera position
         this.updateCameraPosition();
+    }
+    
+    updateModelVisibility() {
+        // Update model visibility based on view mode
+        if (this.viewMode === 'firstPerson') {
+            // In first-person, hide all models
+            this.boxModel.visible = false;
+            this.detailedModel.visible = false;
+        } else if (this.viewMode === 'thirdPerson') {
+            // In third-person, show detailed model, hide box model
+            this.boxModel.visible = false;
+            this.detailedModel.visible = true;
+        } else {
+            // In top-down, show box model, hide detailed model
+            this.boxModel.visible = true;
+            this.detailedModel.visible = false;
+        }
     }
     
     updateCameraPosition() {
@@ -211,6 +400,37 @@ class Player {
             this.cameraTargetLookAt.copy(target);
             
             // Apply immediate position for responsive feel
+            this.camera.position.copy(this.cameraTargetPosition);
+            this.camera.lookAt(this.cameraTargetLookAt);
+        } else if (this.viewMode === 'thirdPerson') {
+            // Calculate third-person camera position
+            // Start with player position
+            const playerPos = this.position.clone();
+            
+            // Calculate camera position behind player based on look direction
+            const reverseLookDir = this.lookDirection.clone().multiplyScalar(-1);
+            
+            // Create offset vector: behind and above player
+            const offset = new THREE.Vector3(
+                reverseLookDir.x * this.thirdPersonDistance,
+                this.thirdPersonHeight,
+                reverseLookDir.z * this.thirdPersonDistance
+            );
+            
+            // Set camera target position
+            this.cameraTargetPosition.copy(playerPos.add(offset));
+            
+            // Look at player position plus a small forward offset
+            const lookAtPos = this.position.clone().add(
+                new THREE.Vector3(
+                    this.lookDirection.x * 2,
+                    this.thirdPersonHeight * 0.5,
+                    this.lookDirection.z * 2
+                )
+            );
+            this.cameraTargetLookAt.copy(lookAtPos);
+            
+            // Apply position and look target
             this.camera.position.copy(this.cameraTargetPosition);
             this.camera.lookAt(this.cameraTargetLookAt);
         } else {
@@ -234,9 +454,11 @@ class Player {
 
         // Handle movement
         const moveDirection = new THREE.Vector3();
+        let isMovingForward = false;
+        let isStrafing = false;
 
-        if (this.viewMode === 'firstPerson') {
-            // First-person movement: forward/backward in look direction, strafe left/right
+        if (this.viewMode === 'firstPerson' || this.viewMode === 'thirdPerson') {
+            // First-person and third-person movement: forward/backward in look direction, strafe left/right
             const forward = new THREE.Vector3(
                 this.lookDirection.x,
                 0, // Keep movement on XZ plane
@@ -249,23 +471,65 @@ class Player {
             const right = new THREE.Vector3();
             right.crossVectors(forward, up).normalize();
             
+            // Track which keys are pressed for animation purposes
+            const wPressed = input.isKeyPressed('w');
+            const sPressed = input.isKeyPressed('s');
+            const aPressed = input.isKeyPressed('a');
+            const dPressed = input.isKeyPressed('d');
+            
             // Apply movement based on keys
-            if (input.isKeyPressed('w')) moveDirection.add(forward);
-            if (input.isKeyPressed('s')) moveDirection.sub(forward);
-            if (input.isKeyPressed('a')) moveDirection.sub(right);  // A moves left (subtract right)
-            if (input.isKeyPressed('d')) moveDirection.add(right);  // D moves right (add right)
+            if (wPressed) {
+                moveDirection.add(forward);
+                isMovingForward = true;
+            }
+            if (sPressed) {
+                moveDirection.sub(forward);
+                isMovingForward = false;
+            }
+            if (aPressed) {
+                moveDirection.sub(right);  // A moves left (subtract right)
+                isStrafing = true;
+            }
+            if (dPressed) {
+                moveDirection.add(right);  // D moves right (add right)
+                isStrafing = true;
+            }
+            
+            // Always update player rotation to face look direction in third-person view
+            if (this.viewMode === 'thirdPerson') {
+                this.updatePlayerRotation();
+                
+                // If only strafing (not moving forward/backward), add a slight rotation offset
+                // to make the player look more natural when strafing
+                if (isStrafing && !wPressed && !sPressed && this.detailedModel) {
+                    const strafeAngle = aPressed ? Math.PI / 8 : -Math.PI / 8;
+                    this.detailedModel.rotation.y += strafeAngle;
+                }
+            }
         } else {
             // Top-down view: direct cardinal movement
             const forward = new THREE.Vector3(0, 0, -1);   // Forward is always -Z
             const right = new THREE.Vector3(1, 0, 0);      // Right is always +X
             
             // Forward/backward movement with W/S
-            if (input.isKeyPressed('w')) moveDirection.add(forward);
-            if (input.isKeyPressed('s')) moveDirection.sub(forward);
+            if (input.isKeyPressed('w')) {
+                moveDirection.add(forward);
+                isMovingForward = true;
+            }
+            if (input.isKeyPressed('s')) {
+                moveDirection.sub(forward);
+                isMovingForward = false;
+            }
             
             // Left/right movement with A/D
-            if (input.isKeyPressed('a')) moveDirection.sub(right);  // A moves left (subtract right)
-            if (input.isKeyPressed('d')) moveDirection.add(right);  // D moves right (add right)
+            if (input.isKeyPressed('a')) {
+                moveDirection.sub(right);  // A moves left (subtract right)
+                isStrafing = true;
+            }
+            if (input.isKeyPressed('d')) {
+                moveDirection.add(right);  // D moves right (add right)
+                isStrafing = true;
+            }
         }
         
         // COMPLETELY REWRITTEN STAMINA & SPRINT HANDLING
@@ -324,14 +588,19 @@ class Player {
         }
         
         // Update the player model position
-        this.model.position.copy(this.position);
+        this.modelGroup.position.copy(this.position);
         
-        // Make the model invisible in first-person mode
-        if (this.viewMode === 'firstPerson') {
-            this.model.visible = false;
-        } else {
-            this.model.visible = true;
-        }
+        // Update model visibility based on view mode
+        this.updateModelVisibility();
+        
+        // Update player rotation to face the look direction
+        this.updatePlayerRotation();
+        
+        // Update animation state based on movement
+        this.updateAnimationState(isMoving, isSprinting, isMovingForward, isStrafing);
+        
+        // Update animations
+        this.updateAnimations(deltaTime);
         
         // Update camera position
         this.updateCameraPosition();
@@ -359,6 +628,142 @@ class Player {
         // Health regeneration up to the limit
         if (this.health < this.healthRegenLimit) {
             this.health = Math.min(this.healthRegenLimit, this.health + this.healthRegenRate * deltaTime);
+        }
+    }
+    
+    updateAnimationState(isMoving, isSprinting, isMovingForward = true, isStrafing = false) {
+        // Determine animation state based on movement
+        if (!this.isGrounded) {
+            this.animationState = 'jumping';
+        } else if (isMoving) {
+            this.animationState = isSprinting ? 'running' : 'walking';
+        } else {
+            this.animationState = 'idle';
+        }
+        
+        // Store movement direction for animations
+        this.isMovingForward = isMovingForward;
+        this.isStrafing = isStrafing;
+    }
+    
+    updateAnimations(deltaTime) {
+        // Only update animations if in third-person view and model is visible
+        if (this.viewMode !== 'thirdPerson' || !this.detailedModel.visible) return;
+        
+        // Get animation parameters based on current state
+        const speed = this.animationSpeed[this.animationState] || this.animationSpeed.idle;
+        const bobAmount = this.bobAmount[this.animationState] || this.bobAmount.idle;
+        
+        // Update animation time
+        this.animationTime += deltaTime * speed;
+        
+        // Apply animations based on state
+        switch (this.animationState) {
+            case 'idle':
+                // Subtle breathing animation
+                this.torso.position.y = 0.2 + Math.sin(this.animationTime * 0.5) * 0.01;
+                this.head.position.y = 0.7 + Math.sin(this.animationTime * 0.5) * 0.01;
+                
+                // Reset limb positions
+                this.leftArm.rotation.x = Math.sin(this.animationTime * 0.5) * 0.05;
+                this.rightArm.rotation.x = Math.sin(this.animationTime * 0.5) * 0.05;
+                this.leftLeg.rotation.x = 0;
+                this.rightLeg.rotation.x = 0;
+                
+                // Reset any forward lean
+                this.detailedModel.rotation.x = 0;
+                break;
+                
+            case 'walking':
+                // Walking animation - arms and legs swing in opposite directions
+                const walkFactor = this.isMovingForward ? 1 : -1; // Reverse animation when moving backward
+                
+                if (this.isStrafing && !this.isMovingForward) {
+                    // Special strafing animation - arms and legs move differently
+                    this.leftArm.rotation.x = Math.sin(this.animationTime * 2) * 0.3;
+                    this.rightArm.rotation.x = Math.sin(this.animationTime * 2 + Math.PI) * 0.3;
+                    this.leftLeg.rotation.z = Math.sin(this.animationTime * 2) * 0.1; // Side-to-side leg movement
+                    this.rightLeg.rotation.z = Math.sin(this.animationTime * 2 + Math.PI) * 0.1;
+                    this.leftLeg.rotation.x = Math.sin(this.animationTime * 2) * 0.2;
+                    this.rightLeg.rotation.x = Math.sin(this.animationTime * 2 + Math.PI) * 0.2;
+                } else {
+                    // Regular walking animation
+                    this.leftArm.rotation.x = Math.sin(this.animationTime * 2) * 0.4 * walkFactor;
+                    this.rightArm.rotation.x = Math.sin(this.animationTime * 2 + Math.PI) * 0.4 * walkFactor;
+                    this.leftLeg.rotation.x = Math.sin(this.animationTime * 2 + Math.PI) * 0.4 * walkFactor;
+                    this.rightLeg.rotation.x = Math.sin(this.animationTime * 2) * 0.4 * walkFactor;
+                    
+                    // Reset any z-rotation
+                    this.leftLeg.rotation.z = 0;
+                    this.rightLeg.rotation.z = 0;
+                }
+                
+                // Subtle body bob
+                this.torso.position.y = 0.2 + Math.abs(Math.sin(this.animationTime * 4)) * bobAmount;
+                this.head.position.y = 0.7 + Math.abs(Math.sin(this.animationTime * 4)) * bobAmount;
+                
+                // Slight lean forward or backward based on movement direction
+                if (!this.isStrafing) {
+                    this.detailedModel.rotation.x = this.isMovingForward ? 0.05 : -0.05;
+                } else {
+                    this.detailedModel.rotation.x = 0; // No forward/backward lean when strafing
+                }
+                break;
+                
+            case 'running':
+                // Running animation - more exaggerated movement
+                const runFactor = this.isMovingForward ? 1 : -1; // Reverse animation when moving backward
+                
+                if (this.isStrafing && !this.isMovingForward) {
+                    // Special strafing run animation
+                    this.leftArm.rotation.x = Math.sin(this.animationTime * 2) * 0.6;
+                    this.rightArm.rotation.x = Math.sin(this.animationTime * 2 + Math.PI) * 0.6;
+                    this.leftLeg.rotation.z = Math.sin(this.animationTime * 2) * 0.15; // Side-to-side leg movement
+                    this.rightLeg.rotation.z = Math.sin(this.animationTime * 2 + Math.PI) * 0.15;
+                    this.leftLeg.rotation.x = Math.sin(this.animationTime * 2) * 0.4;
+                    this.rightLeg.rotation.x = Math.sin(this.animationTime * 2 + Math.PI) * 0.4;
+                } else {
+                    // Regular running animation
+                    this.leftArm.rotation.x = Math.sin(this.animationTime * 2) * 0.8 * runFactor;
+                    this.rightArm.rotation.x = Math.sin(this.animationTime * 2 + Math.PI) * 0.8 * runFactor;
+                    this.leftLeg.rotation.x = Math.sin(this.animationTime * 2 + Math.PI) * 0.8 * runFactor;
+                    this.rightLeg.rotation.x = Math.sin(this.animationTime * 2) * 0.8 * runFactor;
+                    
+                    // Reset any z-rotation
+                    this.leftLeg.rotation.z = 0;
+                    this.rightLeg.rotation.z = 0;
+                }
+                
+                // More pronounced body bob
+                this.torso.position.y = 0.2 + Math.abs(Math.sin(this.animationTime * 4)) * bobAmount;
+                this.head.position.y = 0.7 + Math.abs(Math.sin(this.animationTime * 4)) * bobAmount;
+                
+                // More significant forward/backward lean based on movement direction
+                if (!this.isStrafing) {
+                    this.detailedModel.rotation.x = this.isMovingForward ? 0.1 : -0.1;
+                } else {
+                    this.detailedModel.rotation.x = 0; // No forward/backward lean when strafing
+                }
+                break;
+                
+            case 'jumping':
+                // Jumping animation - arms up, legs bent
+                this.leftArm.rotation.x = -0.5;
+                this.rightArm.rotation.x = -0.5;
+                this.leftLeg.rotation.x = 0.3;
+                this.rightLeg.rotation.x = 0.3;
+                
+                // Reset any z-rotation
+                this.leftLeg.rotation.z = 0;
+                this.rightLeg.rotation.z = 0;
+                break;
+        }
+        
+        // Make weapon follow right arm animation
+        if (this.weapon) {
+            // Adjust weapon position based on arm movement
+            const armOffset = Math.sin(this.animationTime * 2 + Math.PI) * 0.05;
+            this.weapon.position.y = 0.15 + armOffset;
         }
     }
 
@@ -430,7 +835,7 @@ class Player {
         
         // Reset position
         this.position.set(0, 1.0, 0); // Lower reset height
-        this.model.position.copy(this.position);
+        this.modelGroup.position.copy(this.position);
         
         // Reset look direction
         this.lookDirection = new THREE.Vector3(0, 0, -1);
@@ -466,12 +871,51 @@ class Player {
         // Reset view mode to first person
         this.viewMode = 'firstPerson';
         
-        // Ensure player model is properly visible/invisible based on view mode
-        if (this.viewMode === 'firstPerson') {
-            this.model.visible = false;
-        } else {
-            this.model.visible = true;
+        // Reset animation state
+        this.animationState = 'idle';
+        this.animationTime = 0;
+        this.isMovingForward = true;
+        this.isStrafing = false;
+        
+        // Reset model rotations and positions
+        if (this.detailedModel) {
+            this.detailedModel.rotation.x = 0;
+            
+            // Reset limb positions and rotations
+            if (this.leftArm) {
+                this.leftArm.rotation.x = 0;
+                this.leftArm.rotation.y = 0;
+                this.leftArm.rotation.z = 0;
+            }
+            if (this.rightArm) {
+                this.rightArm.rotation.x = 0;
+                this.rightArm.rotation.y = 0;
+                this.rightArm.rotation.z = 0;
+            }
+            if (this.leftLeg) {
+                this.leftLeg.rotation.x = 0;
+                this.leftLeg.rotation.y = 0;
+                this.leftLeg.rotation.z = 0;
+            }
+            if (this.rightLeg) {
+                this.rightLeg.rotation.x = 0;
+                this.rightLeg.rotation.y = 0;
+                this.rightLeg.rotation.z = 0;
+            }
+            
+            // Reset torso and head positions
+            if (this.torso) this.torso.position.y = 0.2;
+            if (this.head) this.head.position.y = 0.7;
+            
+            // Reset weapon position
+            if (this.weapon) {
+                this.weapon.position.y = 0.15;
+                this.weapon.rotation.y = Math.PI; // Keep pointing forward
+            }
         }
+        
+        // Update model visibility based on view mode
+        this.updateModelVisibility();
         
         // Update camera position to match the reset state
         this.updateCameraPosition();

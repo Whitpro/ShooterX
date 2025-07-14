@@ -393,57 +393,85 @@ class Weapon {
     }
 
     update(deltaTime, playerVelocity) {
-        // Handle weapon position and bobbing
-        if (this.model && this.camera) {
-            // Check if reload is complete
-            if (this.isReloading) {
-                const currentTime = performance.now();
-                if (currentTime - this.reloadStartTime >= this.reloadTime) {
-                    // Reload complete
-                    this.ammo = this.maxAmmo;
-                    this.isReloading = false;
-                    
-                    // Hide reload UI indicator if available
-                    if (window.gameEngine && window.gameEngine.ui) {
-                        window.gameEngine.ui.hideReloadIndicator();
-                    }
-                    
-                    // Play reload complete sound (if available)
-                    // ...
-                }
-            }
+        // Update bullet trails
+        this.updateBulletTrails();
+        
+        // Hide bullet line after a short delay
+        if (this.bulletLine.visible) {
+            setTimeout(() => {
+                this.bulletLine.visible = false;
+            }, 50);
+        }
+        
+        // Check if player is in third-person mode and hide weapon model if so
+        if (window.gameEngine && window.gameEngine.player) {
+            const playerViewMode = window.gameEngine.player.viewMode;
+            this.model.visible = (playerViewMode !== 'thirdPerson');
+        }
+        
+        // Skip weapon updates if not visible
+        if (!this.model.visible) return;
+        
+        // Recover from recoil
+        if (this.currentRecoil > 0) {
+            this.recoverFromRecoil();
+        }
+        
+        // Handle weapon bobbing based on player movement
+        if (playerVelocity) {
+            const speed = Math.sqrt(playerVelocity.x * playerVelocity.x + playerVelocity.z * playerVelocity.z);
             
-            // Calculate weapon bob based on player velocity
-            if (playerVelocity) {
-                const velocityMagnitude = playerVelocity.length();
-                // Only bob when moving
-                if (velocityMagnitude > 0.5) {
-                    this.bobTime += deltaTime * this.bobSpeed * velocityMagnitude;
-                    const bob = Math.sin(this.bobTime) * this.bobAmount * velocityMagnitude;
-                    
-                    // Apply bob to weapon position
-                    this.model.position.y = this.positionOffset.y + bob;
-                    
-                    // Add slight rotation as well based on velocity
-                    const rotationOffset = Math.sin(this.bobTime * 2) * 0.01 * velocityMagnitude;
-                    this.model.rotation.x = this.rotationOffset.x + rotationOffset;
-                    this.model.rotation.z = this.rotationOffset.z + rotationOffset * 0.5;
-                } else {
-                    // Reset to default position smoothly when not moving
-                    this.model.position.y = this.model.position.y * 0.9 + this.positionOffset.y * 0.1;
-                    this.model.rotation.x = this.model.rotation.x * 0.9 + this.rotationOffset.x * 0.1;
-                    this.model.rotation.z = this.model.rotation.z * 0.9 + this.rotationOffset.z * 0.1;
-                }
-            }
-            
-            // Recover from recoil
-            if (this.currentRecoil > 0) {
-                this.recoverFromRecoil();
+            if (speed > 0.5) {
+                // Increase bob time based on player speed
+                this.bobTime += deltaTime * this.bobSpeed * (speed / 5);
+                
+                // Calculate bob offsets
+                const bobX = Math.sin(this.bobTime * 2) * this.bobAmount * speed;
+                const bobY = Math.sin(this.bobTime * 4) * this.bobAmount * speed;
+                
+                // Apply bobbing to weapon position
+                this.model.position.x = this.positionOffset.x + bobX;
+                this.model.position.y = this.positionOffset.y + bobY;
+            } else {
+                // Gradually return to rest position when not moving
+                this.model.position.x = THREE.MathUtils.lerp(this.model.position.x, this.positionOffset.x, deltaTime * 5);
+                this.model.position.y = THREE.MathUtils.lerp(this.model.position.y, this.positionOffset.y, deltaTime * 5);
             }
         }
         
-        // Update bullet trails
-        this.updateBulletTrails();
+        // Handle reload animation
+        if (this.isReloading) {
+            const elapsed = Date.now() - this.reloadStartTime;
+            const progress = Math.min(1, elapsed / this.reloadTime);
+            
+            // Simple reload animation
+            if (progress < 0.5) {
+                // First half: move weapon down and rotate
+                const downAmount = Math.sin(progress * Math.PI) * 0.2;
+                const rotateAmount = progress * 0.3;
+                
+                this.model.position.y = this.positionOffset.y - downAmount;
+                this.model.rotation.x = this.rotationOffset.x + rotateAmount;
+            } else {
+                // Second half: move weapon back up and rotate back
+                const upProgress = (progress - 0.5) * 2;
+                const downAmount = Math.sin((1 - upProgress) * Math.PI) * 0.2;
+                const rotateAmount = (1 - upProgress) * 0.3;
+                
+                this.model.position.y = this.positionOffset.y - downAmount;
+                this.model.rotation.x = this.rotationOffset.x + rotateAmount;
+            }
+            
+            // Reload complete
+            if (progress >= 1) {
+                this.isReloading = false;
+                this.ammo = this.maxAmmo;
+                
+                // Reset position and rotation
+                this.model.position.copy(this.positionOffset);
+                this.model.rotation.copy(this.rotationOffset);
+            }
+        }
     }
 
     reload() {

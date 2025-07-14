@@ -315,9 +315,12 @@ class Enemy {
         
         // No need to make health bar face the camera anymore - it's fixed orientation
 
+        // Get the player's position - use the player model position instead of camera
+        const playerPosition = player.position ? player.position.clone() : player.camera.position.clone();
+        
         // Calculate direction to player
         const toPlayer = new THREE.Vector3();
-        toPlayer.subVectors(player.camera.position, this.position);
+        toPlayer.subVectors(playerPosition, this.position);
         const distanceToPlayer = toPlayer.length();
 
         // State management
@@ -537,9 +540,12 @@ class Enemy {
     attack(player) {
         if (!player) return;
         
+        // Get the player's position - use the player model position instead of camera
+        const playerPosition = player.position ? player.position.clone() : player.camera.position.clone();
+        
         // Check distance to player
         const toPlayer = new THREE.Vector3();
-        toPlayer.subVectors(player.camera.position, this.position);
+        toPlayer.subVectors(playerPosition, this.position);
         const distanceToPlayer = toPlayer.length();
         
         // Use only attackRange for attack, not radius

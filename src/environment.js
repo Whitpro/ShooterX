@@ -1,6 +1,7 @@
 import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
 import PowerUp from './powerup.js';
 
+
 // Import lighting nodes for enhanced lighting effects
 import HemisphereLightNode from '../three.js-r178/three.js-r178/src/nodes/lighting/HemisphereLightNode.js';
 import PointLightNode from '../three.js-r178/three.js-r178/src/nodes/lighting/PointLightNode.js';
@@ -16,6 +17,10 @@ class Environment {
         this.spawnPoints = []; // Store valid spawn points
         this.initialized = false;
         this.useTextures = true; // Enable textures
+        
+        // Set boundary radius
+        this.boundaryRadius = 65;
+        console.log('Environment constructor: boundaryRadius set to', this.boundaryRadius);
         
         // Check if we're using WebGPU to enable optimizations
         this.isUsingWebGPU = false;
@@ -157,12 +162,11 @@ class Environment {
             console.error('Error during texture loading setup:', error);
         }
         
+        // Create the world first
         this.createWorld();
         
-        // Set boundary radius and create animated boundary
-        this.boundaryRadius = 65;
-        
-        // Create animated boundary elements
+        // Create animated boundary after the world is created
+        console.log('Creating animated boundary after world creation');
         this.createAnimatedBoundary();
 
         this.powerUps = [];
@@ -207,7 +211,48 @@ class Environment {
             }
         });
         
-        // Clean up boundary elements
+        // Clean up boundary posts
+        if (this.boundaryPosts && this.boundaryPosts.length > 0) {
+            this.boundaryPosts.forEach(post => {
+                if (post) {
+                    // Remove all children (lights, etc.)
+                    while (post.children.length > 0) {
+                        const child = post.children[0];
+                        post.remove(child);
+                    }
+                    
+                    this.scene.remove(post);
+                    if (post.geometry) post.geometry.dispose();
+                    if (post.material) post.material.dispose();
+                    totalObjectsRemoved++;
+                }
+            });
+            this.boundaryPosts = [];
+        }
+        
+        // Clean up boundary beams
+        if (this.boundaryBeams && this.boundaryBeams.length > 0) {
+            this.boundaryBeams.forEach(beam => {
+                if (beam) {
+                    this.scene.remove(beam);
+                    if (beam.geometry) beam.geometry.dispose();
+                    if (beam.material) beam.material.dispose();
+                    totalObjectsRemoved++;
+                }
+            });
+            this.boundaryBeams = [];
+        }
+        
+        // Clean up center marker
+        if (this.centerMarker) {
+            this.scene.remove(this.centerMarker);
+            if (this.centerMarker.geometry) this.centerMarker.geometry.dispose();
+            if (this.centerMarker.material) this.centerMarker.material.dispose();
+            this.centerMarker = null;
+            totalObjectsRemoved++;
+        }
+        
+        // Clean up old boundary wall (if it exists)
         if (this.boundaryWall) {
             // Remove all lights from the boundary
             while (this.boundaryWall.children.length > 0) {
@@ -227,6 +272,48 @@ class Environment {
             }
             this.boundaryWall = null;
             totalObjectsRemoved++;
+        }
+        
+        // Clean up boundary ring
+        if (this.boundaryRing) {
+            this.scene.remove(this.boundaryRing);
+            if (this.boundaryRing.geometry) this.boundaryRing.geometry.dispose();
+            if (this.boundaryRing.material) this.boundaryRing.material.dispose();
+            this.boundaryRing = null;
+            totalObjectsRemoved++;
+        }
+        
+        // Clean up boundary lines
+        if (this.boundaryLines && this.boundaryLines.length > 0) {
+            this.boundaryLines.forEach(line => {
+                if (line.mesh) {
+                    this.scene.remove(line.mesh);
+                    if (line.mesh.geometry) line.mesh.geometry.dispose();
+                    if (line.mesh.material) line.mesh.material.dispose();
+                    totalObjectsRemoved++;
+                }
+            });
+            this.boundaryLines = [];
+        }
+        
+        // Clean up debug sphere
+        if (this.debugSphere) {
+            this.scene.remove(this.debugSphere);
+            if (this.debugSphere.geometry) this.debugSphere.geometry.dispose();
+            if (this.debugSphere.material) this.debugSphere.material.dispose();
+            this.debugSphere = null;
+            totalObjectsRemoved++;
+        }
+        
+        // Clean up debug arrows
+        if (this.debugArrows && this.debugArrows.length > 0) {
+            this.debugArrows.forEach(arrow => {
+                if (arrow) {
+                    this.scene.remove(arrow);
+                    totalObjectsRemoved++;
+                }
+            });
+            this.debugArrows = [];
         }
         
         // Clean up barrier lights
@@ -333,11 +420,11 @@ class Environment {
     }
 
     createWorld() {
-        // Create a simple sky background using a scene clear color instead of a mesh
-        this.scene.background = new THREE.Color(0xADD8E6); // Light blue sky
+        // Create a darker sky background
+        this.scene.background = new THREE.Color(0x5c7aaa); // Deeper blue sky
         
-        // Add fog for distance fading
-        this.scene.fog = new THREE.FogExp2(0xADD8E6, 0.0025);
+        // Add fog for distance fading and atmosphere
+        this.scene.fog = new THREE.FogExp2(0x5c7aaa, 0.0035); // Slightly denser fog for atmosphere
 
         // Create ground first
         this.createGround();
@@ -719,10 +806,10 @@ class Environment {
     }
 
         setupLighting() {
-        // Performance-optimized lighting setup
+        // More realistic, darker lighting setup
         
-        // 1. Add ambient light with slightly increased intensity to compensate for fewer lights
-        const ambientLight = new THREE.AmbientLight(0xccddff, 0.7); // Increased intensity
+        // 1. Add ambient light with reduced intensity for a darker atmosphere
+        const ambientLight = new THREE.AmbientLight(0x404050, 0.4); // Darker blue-gray, reduced intensity
         this.scene.add(ambientLight);
         
         // Apply AmbientLightNode if available
@@ -735,8 +822,8 @@ class Environment {
             console.warn('AmbientLightNode not fully supported:', e);
         }
 
-        // 2. Add directional light (sun) with optimized settings
-        const sunLight = new THREE.DirectionalLight(0xffffcc, 1.2); // Increased intensity
+        // 2. Add directional light (sun) with more realistic settings
+        const sunLight = new THREE.DirectionalLight(0xffffbb, 0.8); // Warmer, less intense sunlight
         sunLight.position.set(50, 100, 50);
         sunLight.castShadow = true;
         
@@ -750,31 +837,29 @@ class Environment {
             console.warn('DirectionalLightNode not fully supported:', e);
         }
         
-        // Further optimize shadow quality for performance
+        // Improve shadow quality for more realistic shadows
         if (this.isUsingWebGPU) {
-            // Reduced shadow map size for better performance
-            sunLight.shadow.mapSize.width = 1024; // Reduced from 2048
-            sunLight.shadow.mapSize.height = 1024; // Reduced from 2048
-            // Improve shadow precision for WebGPU
+            sunLight.shadow.mapSize.width = 1024;
+            sunLight.shadow.mapSize.height = 1024;
+            // Improve shadow precision
             sunLight.shadow.bias = -0.0001;
         } else {
-            // WebGL settings
-            sunLight.shadow.mapSize.width = 512; // Reduced from 1024
-            sunLight.shadow.mapSize.height = 512; // Reduced from 1024
+            sunLight.shadow.mapSize.width = 512;
+            sunLight.shadow.mapSize.height = 512;
         }
         
         // Optimize shadow camera frustum
         sunLight.shadow.camera.near = 1;
-        sunLight.shadow.camera.far = 300; // Reduced from 500
-        sunLight.shadow.camera.left = -80; // Reduced from -100
-        sunLight.shadow.camera.right = 80; // Reduced from 100
-        sunLight.shadow.camera.top = 80; // Reduced from 100
-        sunLight.shadow.camera.bottom = -80; // Reduced from -100
+        sunLight.shadow.camera.far = 300;
+        sunLight.shadow.camera.left = -80;
+        sunLight.shadow.camera.right = 80;
+        sunLight.shadow.camera.top = 80;
+        sunLight.shadow.camera.bottom = -80;
         
         this.scene.add(sunLight);
 
-        // 3. Add hemisphere light with optimized settings
-        const hemiLight = new THREE.HemisphereLight(0x80bbff, 0x554433, 0.8); // Increased intensity
+        // 3. Add hemisphere light with more natural sky/ground colors
+        const hemiLight = new THREE.HemisphereLight(0x6080b0, 0x3a2a20, 0.5); // Sky blue to earth brown, reduced intensity
         hemiLight.position.set(0, 50, 0);
         
         // Apply HemisphereLightNode if available
@@ -789,14 +874,13 @@ class Environment {
         
         this.scene.add(hemiLight);
 
-        // Remove additional point lights for performance
-        // Instead add just one central light with optimized settings
-        const centerLight = this.createPointLight(0, 15, 0, 0xffffaa, 50, 0.6);
-        centerLight.castShadow = false; // Disable shadows for point lights for performance
+        // Add a subtle fill light to prevent areas from being too dark
+        const fillLight = this.createPointLight(0, 15, 0, 0xd0d0c0, 70, 0.3); // Subtle warm fill light
+        fillLight.castShadow = false;
     }
 
     createPointLight(x, y, z, color, distance, intensity) {
-        // Create an optimized point light
+        // Create a more subtle point light
         const light = new THREE.PointLight(color, intensity, distance);
         light.position.set(x, y, z);
         
@@ -833,11 +917,13 @@ class Environment {
             cloudCount = 15;
         }
         
+        // Create darker, more atmospheric clouds
         const cloudGeometry = new THREE.SphereGeometry(10, segments, segments);
         const cloudMaterial = new THREE.MeshPhongMaterial({
-            color: 0xffffff,
+            color: 0xdddddd, // Slightly darker clouds
             transparent: true,
-            opacity: 0.8
+            opacity: 0.7,    // More transparent for atmospheric effect
+            fog: true        // Make clouds affected by fog
         });
 
         // Create clouds based on detected capabilities
@@ -847,7 +933,7 @@ class Environment {
             cloudCluster.userData.isEnvironment = true;
             cloudCluster.userData.type = 'cloud';
             
-            const numSpheres = 3 + Math.floor(Math.random() * 3); // Original spheres per cloud
+            const numSpheres = 3 + Math.floor(Math.random() * 3);
             for (let j = 0; j < numSpheres; j++) {
                 const cloudPart = new THREE.Mesh(cloudGeometry, cloudMaterial);
                 cloudPart.position.set(
@@ -866,9 +952,10 @@ class Environment {
                 cloudCluster.add(cloudPart);
             }
 
+            // Position clouds higher and more spread out
             cloudCluster.position.set(
                 (Math.random() - 0.5) * 200,
-                60 + Math.random() * 40,
+                70 + Math.random() * 40, // Higher clouds
                 (Math.random() - 0.5) * 200
             );
             
@@ -986,111 +1073,125 @@ class Environment {
     }
 
     createAnimatedBoundary() {
-        // Create WebGPU-optimized boundary with proper lighting
-        const boundaryHeight = 3.0;
-        const segments = 48; // Reduced segment count for better performance
+        console.log('Creating simplified boundary visualization...');
         
-        // Create animated texture for the boundary
-        const textureSize = 256; // Reduced texture size for better performance
-        const canvas = document.createElement('canvas');
-        canvas.width = textureSize;
-        canvas.height = textureSize;
-        const ctx = canvas.getContext('2d');
-        
-        // Draw striped pattern
-        for (let i = 0; i < textureSize; i += 16) {
-            const gradient = ctx.createLinearGradient(i, 0, i + 12, 0);
-            gradient.addColorStop(0, 'rgba(255, 64, 64, 0.8)');
-            gradient.addColorStop(1, 'rgba(255, 180, 180, 0.2)');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(i, 0, 8, textureSize);
+        // Check if boundaryRadius is defined
+        if (typeof this.boundaryRadius !== 'number' || isNaN(this.boundaryRadius)) {
+            console.error('boundaryRadius is not properly defined:', this.boundaryRadius);
+            this.boundaryRadius = 65; // Set default value
+            console.log('Set default boundaryRadius to 65');
         }
         
-        const stripesTexture = new THREE.CanvasTexture(canvas);
-        stripesTexture.wrapS = stripesTexture.wrapT = THREE.RepeatWrapping;
-        stripesTexture.repeat.set(8, 2);
-        stripesTexture.minFilter = THREE.LinearFilter; // Simpler filtering for performance
+        console.log(`Boundary radius: ${this.boundaryRadius}`);
         
-        // Create material optimized for WebGPU lighting with enhanced visibility
-        const boundaryMaterial = new THREE.MeshStandardMaterial({
-            color: 0xff4040,
-            emissive: 0xff2020,
-            emissiveIntensity: 1.2, // Increased brightness
-            metalness: 0.5,
-            roughness: 0.2, // Smoother for better reflections
-            transparent: true,
-            opacity: 0.9, // Higher opacity for better visibility
-            alphaMap: stripesTexture,
-            side: THREE.DoubleSide,
-            depthWrite: false
-        });
-        
-        // Create the boundary cylinder
-        this.boundaryWall = new THREE.Mesh(
-            new THREE.CylinderGeometry(this.boundaryRadius, this.boundaryRadius, boundaryHeight, segments, 1, true),
-            boundaryMaterial
-        );
-        this.boundaryWall.position.y = boundaryHeight / 2;
-        this.scene.add(this.boundaryWall);
-        
-        // Create boundary lights using WebGPU's lighting system
-        this.barrierLights = [];
-        
-        // Add lights at cardinal points for proper boundary illumination
-        const lightPositions = [
-            { angle: 0, x: this.boundaryRadius, z: 0 },
-            { angle: Math.PI/2, x: 0, z: this.boundaryRadius },
-            { angle: Math.PI, x: -this.boundaryRadius, z: 0 },
-            { angle: Math.PI*3/2, x: 0, z: -this.boundaryRadius }
-        ];
-        
-                // Create lights with WebGPU-optimized settings and enhanced lighting nodes
-        // Reduce number of lights for performance - use only 2 instead of 4
-        lightPositions.slice(0, 2).forEach(pos => {
-            // Create a point light with WebGPU settings - enhanced brightness
-            const light = new THREE.PointLight(0xff3030, 5, 30); // Brighter to compensate for fewer lights
-            light.position.set(pos.x, boundaryHeight/2, pos.z);
+        try {
+            // Create arrays to store boundary objects
+            this.boundaryPosts = [];
+            this.boundaryBeams = [];
+            
+            // Create posts around the boundary
+            const postCount = 32;
+            const postHeight = 15;
+            const postWidth = 1;
+            const postGeometry = new THREE.BoxGeometry(postWidth, postHeight, postWidth);
+            const postMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff0000,
+                emissive: 0xff0000,
+                emissiveIntensity: 1.0
+            });
+            
+            console.log(`Creating ${postCount} boundary posts...`);
+            
+            for (let i = 0; i < postCount; i++) {
+                const angle = (i / postCount) * Math.PI * 2;
+                const x = Math.cos(angle) * this.boundaryRadius;
+                const z = Math.sin(angle) * this.boundaryRadius;
+                
+                const post = new THREE.Mesh(postGeometry, postMaterial);
+                post.position.set(x, postHeight / 2, z);
+                this.scene.add(post);
+                this.boundaryPosts.push(post);
+                
+                // Add a light on top of each post
+                if (i % 4 === 0) { // Add lights to every 4th post to save performance
+                    const light = new THREE.PointLight(0xff0000, 5, 20);
+                    light.position.set(0, postHeight / 2, 0);
+                    post.add(light);
                     
-            // Apply PointLightNode for enhanced lighting effects if available
-            try {
-                if (typeof PointLightNode === 'function') {
-                    const lightNode = new PointLightNode(light);
-                    light.userData.lightNode = lightNode;
+                    // Add a sphere to make the light source visible
+                    const lightSphereGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+                    const lightSphereMaterial = new THREE.MeshBasicMaterial({
+                        color: 0xff5555,
+                        emissive: 0xff0000,
+                        emissiveIntensity: 1.0
+                    });
+                    const lightSphere = new THREE.Mesh(lightSphereGeometry, lightSphereMaterial);
+                    lightSphere.position.set(0, postHeight / 2 + 0.5, 0);
+                    post.add(lightSphere);
                 }
-            } catch (e) {
-                console.warn('PointLightNode not fully supported:', e);
-            }
-                    
-            // Enable shadows if WebGPU is available
-            if (this.isUsingWebGPU) {
-                light.castShadow = true;
-                light.shadow.mapSize.width = 256; // Reduced shadow map size
-                light.shadow.mapSize.height = 256; // Reduced shadow map size
             }
             
-            this.scene.add(light);
-            this.barrierLights.push(light);
-        });
-        
-        // Add a hemisphere light for barrier glow with enhanced node support
-        const hemiLight = new THREE.HemisphereLight(0xff4040, 0x404040, 0.8); // Increased intensity
-        hemiLight.position.set(0, boundaryHeight, 0);
-        
-        // Apply HemisphereLightNode for enhanced lighting effects if available
-        try {
-            if (typeof HemisphereLightNode === 'function') {
-                const hemiLightNode = new HemisphereLightNode(hemiLight);
-                hemiLight.userData.lightNode = hemiLightNode;
+            console.log(`Created ${this.boundaryPosts.length} boundary posts`);
+            
+            // Connect posts with beams
+            const beamHeight = 0.5;
+            const beamDepth = 0.5;
+            const beamMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffff00,
+                emissive: 0xffff00,
+                emissiveIntensity: 1.0
+            });
+            
+            console.log('Creating boundary beams...');
+            
+            for (let i = 0; i < postCount; i++) {
+                const currentPost = this.boundaryPosts[i];
+                const nextPost = this.boundaryPosts[(i + 1) % postCount];
+                
+                // Calculate beam dimensions
+                const dx = nextPost.position.x - currentPost.position.x;
+                const dz = nextPost.position.z - currentPost.position.z;
+                const beamLength = Math.sqrt(dx * dx + dz * dz);
+                
+                // Create beam geometry
+                const beamGeometry = new THREE.BoxGeometry(beamLength, beamHeight, beamDepth);
+                const beam = new THREE.Mesh(beamGeometry, beamMaterial);
+                
+                // Position beam between posts
+                beam.position.set(
+                    (currentPost.position.x + nextPost.position.x) / 2,
+                    postHeight - beamHeight / 2, // Place at top of posts
+                    (currentPost.position.z + nextPost.position.z) / 2
+                );
+                
+                // Rotate beam to point to next post
+                beam.rotation.y = Math.atan2(dz, dx);
+                
+                this.scene.add(beam);
+                this.boundaryBeams.push(beam);
             }
-        } catch (e) {
-            console.warn('HemisphereLightNode not fully supported:', e);
+            
+            console.log(`Created ${this.boundaryBeams.length} boundary beams`);
+            
+            // Add a center marker for debugging
+            const centerMarkerGeometry = new THREE.BoxGeometry(5, 5, 5);
+            const centerMarkerMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00ff00,
+                wireframe: true
+            });
+            this.centerMarker = new THREE.Mesh(centerMarkerGeometry, centerMarkerMaterial);
+            this.centerMarker.position.set(0, 5, 0);
+            this.scene.add(this.centerMarker);
+            console.log('Added center marker for debugging');
+            
+            // Initialize animation variables
+            this._animationTime = 0;
+            this._lastDebugTime = 0;
+            
+            console.log('Simplified boundary visualization complete');
+        } catch (error) {
+            console.error('Error creating boundary visualization:', error);
         }
-        
-        this.boundaryWall.add(hemiLight);
-        this.barrierLights.push(hemiLight);
-        
-        // Initialize animation variables
-        this._animationTime = 0;
     }
     
     // Empty placeholder methods to maintain API compatibility
@@ -1099,53 +1200,47 @@ class Environment {
     }
 
     updateAnimatedBarrierWall(deltaTime, playerPosition = null) {
-        // Update WebGPU-optimized boundary
-        if (this.boundaryWall && this.boundaryWall.material) {
-            // Update animation time
-            this._animationTime += deltaTime;
+        // Update the animation time
+        this._animationTime += deltaTime;
+        
+        // Log debug info every few seconds
+        if (Math.floor(this._animationTime) % 5 === 0 && Math.floor(this._animationTime) !== this._lastDebugTime) {
+            this._lastDebugTime = Math.floor(this._animationTime);
             
-            // Animate texture offset for moving effect - faster animation
-            if (this.boundaryWall.material.alphaMap) {
-                this.boundaryWall.material.alphaMap.offset.y = this._animationTime * 0.4; // Double animation speed
-                this.boundaryWall.material.alphaMap.offset.x = Math.sin(this._animationTime) * 0.1; // Add horizontal movement
-                this.boundaryWall.material.alphaMap.needsUpdate = true;
-            }
+            // Log boundary status
+            console.log(`Boundary status at ${this._animationTime.toFixed(1)}s:`);
+            console.log(`- Posts: ${this.boundaryPosts ? this.boundaryPosts.length : 'none'}`);
+            console.log(`- Beams: ${this.boundaryBeams ? this.boundaryBeams.length : 'none'}`);
             
-            // Player proximity effects
+            // Log player position if available
             if (playerPosition) {
+                console.log(`Player position: x=${playerPosition.x.toFixed(1)}, y=${playerPosition.y.toFixed(1)}, z=${playerPosition.z.toFixed(1)}`);
                 const distanceToCenter = Math.sqrt(playerPosition.x * playerPosition.x + playerPosition.z * playerPosition.z);
-                const distanceToBoundary = Math.max(0, this.boundaryRadius - distanceToCenter);
-                
-                // Increase visual effects when player is close to boundary
-                if (distanceToBoundary < 8) {
-                    // Calculate intensity based on proximity
-                    const proximityFactor = 1.0 + (1.0 - distanceToBoundary / 8) * 2.0;
-                    
-                    // Increase emissive intensity
-                    this.boundaryWall.material.emissiveIntensity = Math.min(2.0, 0.8 * proximityFactor);
-                    
-                    // Make boundary more visible/intense
-                    this.boundaryWall.material.opacity = Math.min(1.0, 0.8 * proximityFactor);
-                    
-                    // Animate texture faster when close to boundary
-                    if (this.boundaryWall.material.alphaMap) {
-                        this.boundaryWall.material.alphaMap.offset.y += deltaTime * 0.3 * proximityFactor;
-                    }
-                    
-                    // Update lights intensity
-                    this.updateBarrierLights(deltaTime, proximityFactor);
-                } else {
-                    // Default values when player is far
-                    this.boundaryWall.material.emissiveIntensity = 0.8;
-                    this.boundaryWall.material.opacity = 0.8;
-                    
-                    // Update lights with normal intensity
-                    this.updateBarrierLights(deltaTime, 1.0);
-                }
-            } else {
-                // Update lights with normal intensity
-                this.updateBarrierLights(deltaTime, 1.0);
+                console.log(`Distance from player to center: ${distanceToCenter.toFixed(1)}`);
+                console.log(`Distance from player to boundary: ${(this.boundaryRadius - distanceToCenter).toFixed(1)}`);
             }
+        }
+        
+        // Animate the posts
+        if (this.boundaryPosts && this.boundaryPosts.length > 0) {
+            this.boundaryPosts.forEach((post, index) => {
+                if (post && post.material) {
+                    // Make posts pulse
+                    const pulseValue = Math.sin(this._animationTime * 2 + index * 0.2) * 0.3 + 0.7;
+                    post.material.emissiveIntensity = pulseValue;
+                }
+            });
+        }
+        
+        // Animate the beams
+        if (this.boundaryBeams && this.boundaryBeams.length > 0) {
+            this.boundaryBeams.forEach((beam, index) => {
+                if (beam && beam.material) {
+                    // Make beams pulse in a different pattern
+                    const pulseValue = Math.sin(this._animationTime * 3 + index * 0.3) * 0.3 + 0.7;
+                    beam.material.emissiveIntensity = pulseValue;
+                }
+            });
         }
     }
 
@@ -1153,22 +1248,14 @@ class Environment {
         if (!this.barrierLights || this.barrierLights.length === 0) return;
         
         // Update the animation time for light pulsing
-        this._animationTime += deltaTime;
         const pulseValue = Math.sin(this._animationTime * 2) * 0.3 + 0.7; // Pulsing between 0.4 and 1.0
         
         // Update each barrier light
         this.barrierLights.forEach((light, index) => {
-            // Skip hemisphere lights which don't have intensity
-            if (light instanceof THREE.HemisphereLight) {
-                light.intensity = 0.6 * intensityFactor; // Just adjust base intensity
-                return;
-            }
-            
-            // For point lights
             if (light instanceof THREE.PointLight) {
                 // Add offset for each light to make them pulse at different times
                 const offsetPulse = pulseValue * (1 + index * 0.25) * intensityFactor;
-                light.intensity = 4 * offsetPulse; // Doubled intensity for better visibility
+                light.intensity = 4 * offsetPulse; // Adjusted intensity for better visibility
                 
                 // Enhance light color for better visibility
                 const r = 1.0; // Keep red channel at maximum
