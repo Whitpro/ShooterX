@@ -8,7 +8,6 @@ import EnemyManager from './enemyManager.js';
 import Environment from './environment.js';
 import Input from './input.js';
 import GAME_STATES from './gameStates.js';
-import Settings from './settings.js';
 
 // Debug mode flag
 const DEBUG = process.env.NODE_ENV === 'development';
@@ -67,7 +66,7 @@ class GameEngine {
             this.renderer.setSize(window.innerWidth, window.innerHeight);
             this.renderer.shadowMap.enabled = true;
             this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            this.renderer.setPixelRatio(window.devicePixelRatio);
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
             document.body.appendChild(this.renderer.domElement);
             
             // Set initial camera position
@@ -186,14 +185,7 @@ class GameEngine {
             this.waveSystem = new Wave(this.enemyManager);
             debug('Wave system created');
             
-            // Initialize settings
-            this.settings = new Settings(this, this.ui);
-            debug('Settings created');
-            
-            // Apply settings
-            if (this.settings) {
-                this.settings.applyAllSettings();
-            }
+            // Settings initialization deferred; defaults are applied
             
             // Make sure game engine is accessible globally
             window.gameEngine = this;

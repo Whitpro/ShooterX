@@ -875,7 +875,7 @@ class Environment {
             this.scene.add(cloudCluster);
         }
         
-        console.log(`[Environment] Added ${cloudCount} cloud clusters to scene`);
+        // console.log(`[Environment] Added ${cloudCount} cloud clusters to scene`);
     }
 
     createMapBoundaries() {
@@ -1218,7 +1218,7 @@ class Environment {
         
         // Spawn new power-ups at intervals
         this._powerUpTimer += deltaTime;
-        console.log(`[Environment] Power-up timer: ${this._powerUpTimer.toFixed(2)}/${this.powerUpSpawnInterval}`);
+        // console.log(`[Environment] Power-up timer: ${this._powerUpTimer.toFixed(2)}/${this.powerUpSpawnInterval}`);
         
         if (this._powerUpTimer >= this.powerUpSpawnInterval) {
             console.log(`[Environment] Spawning new power-up after ${this._powerUpTimer.toFixed(2)} seconds`);
@@ -1232,7 +1232,7 @@ class Environment {
             pu.update(player);
             return !pu.collected;
         });
-        console.log(`[Environment] Power-ups active: ${this.powerUps.length}/${beforeCount}`);
+        // console.log(`[Environment] Power-ups active: ${this.powerUps.length}/${beforeCount}`);
     }
 
     spawnPowerUp(type) {
