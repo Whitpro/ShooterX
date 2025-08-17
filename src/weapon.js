@@ -58,7 +58,7 @@ class Weapon {
         });
         this.activeTrails = [];
 
-        console.log('[Weapon] Constructed, fireRate:', this.fireRate, '_originalFireRate:', this._originalFireRate);
+        // console.log('[Weapon] Constructed, fireRate:', this.fireRate, '_originalFireRate:', this._originalFireRate);
     }
 
     createModel() {
@@ -145,7 +145,7 @@ class Weapon {
             return false;
         }
 
-        console.log('[Weapon] Shot fired, fireRate:', this.fireRate);
+        // console.log('[Weapon] Shot fired, fireRate:', this.fireRate);
         // Only decrease ammo if infinite ammo is not enabled
         if (!this.infiniteAmmo) {
             this.ammo--;
@@ -210,14 +210,14 @@ class Weapon {
             hitEnemy = enemyMap.get(hitObject.id);
 
             if (hitEnemy) {
-                console.log('Hit enemy of type:', hitEnemy.type);
+                // console.log('Hit enemy of type:', hitEnemy.type);
                 
                 // Create hit effect at impact point
                 this.createHitEffect(endPosition);
                 
                 // Handle the hit and get points
                 const points = enemyManager.handleHit(hitEnemy, this.damage);
-                console.log('Enemy hit! Points:', points);
+                // console.log('Enemy hit! Points:', points);
                 
                 // Register shot hit with wave system directly
                 if (window.gameEngine && window.gameEngine.onShotHit) {
@@ -226,7 +226,7 @@ class Weapon {
                 
                 return points;
             } else {
-                console.warn('Hit object not mapped to an enemy:', hitObject);
+                                    // console.warn('Hit object not mapped to an enemy:', hitObject);
             }
         } else {
             endPosition = startPosition.clone().add(

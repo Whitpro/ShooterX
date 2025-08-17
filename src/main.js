@@ -122,17 +122,19 @@ app.whenReady().then(async () => {
     try {
         debug('Application ready, starting backend and creating window...');
         
-        // Initialize backend server
-        try {
-            const backendReady = await backendStarter.init();
-            if (backendReady) {
-                debug('Bug reporter backend server started successfully');
-            } else {
-                console.warn('Bug reporter backend server failed to start. Bug reporting may not work.');
+        // Initialize backend server only in development
+        if (process.env.NODE_ENV === 'development') {
+            try {
+                const backendReady = await backendStarter.init();
+                if (backendReady) {
+                    debug('Bug reporter backend server started successfully');
+                } else {
+                    console.warn('Bug reporter backend server failed to start. Bug reporting may not work.');
+                }
+            } catch (backendError) {
+                console.error('Error starting backend server:', backendError);
+                // Continue anyway, the game should work without bug reporting
             }
-        } catch (backendError) {
-            console.error('Error starting backend server:', backendError);
-            // Continue anyway, the game should work without bug reporting
         }
         
         // Create main window if Electron is available

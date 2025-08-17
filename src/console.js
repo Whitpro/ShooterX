@@ -1,6 +1,5 @@
 // Import BugReport module
 import BugReport from './bugReport.js';
-import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
 import { ENEMY_TYPES } from './enemyTypes.js';
 
 class Console {

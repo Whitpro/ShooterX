@@ -683,11 +683,45 @@
 
     <!-- Load game scripts -->
     <script type="module">
-        import { initGame } from './game.js';
-        
-        // Initialize the game when the DOM is loaded
+        // Defer importing the heavy game module until user clicks Start
+        let gameModuleLoaded = false;
+        let initGameFn = null;
+
+        async function ensureGameLoaded() {
+            if (!gameModuleLoaded) {
+                const mod = await import('./game.js');
+                initGameFn = mod.initGame;
+                gameModuleLoaded = true;
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            initGame();
+            // Show main menu immediately without loading the engine
+            const mainMenu = document.getElementById('mainMenu');
+            if (mainMenu) {
+                mainMenu.style.display = 'flex';
+                // next tick to trigger CSS transition if present
+                requestAnimationFrame(() => mainMenu.classList.add('visible'));
+            }
+
+            const startBtn = document.getElementById('startButton');
+            if (startBtn) {
+                startBtn.addEventListener('click', async () => {
+                    await ensureGameLoaded();
+                    if (initGameFn) {
+                        initGameFn();
+                        // Start immediately, mirroring previous behavior
+                        if (window.gameEngine) {
+                            window.gameEngine.ui?.hideMainMenu();
+                            window.gameEngine._preventAutoPause = true;
+                            window.gameEngine.startGame();
+                            if (document.body.requestPointerLock) {
+                                document.body.requestPointerLock();
+                            }
+                        }
+                    }
+                }, { once: true });
+            }
         });
     </script>
 </body>
