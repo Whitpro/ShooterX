@@ -79,10 +79,20 @@ class DayNightCycle {
 
         this._lastGradientKey = -1;
         this._skipFirstFrame = 2;
+        this.frozen = false;
 
         // Reusable position vectors
         this._sunPos = new THREE.Vector3();
         this._moonPos = new THREE.Vector3();
+    }
+
+    setFrozen(frozen, hour = null) {
+        this.frozen = frozen;
+        if (frozen && hour !== null) {
+            this.hour = hour % 24;
+            this._lastGradientKey = -1;
+            this._skipFirstFrame = 2;
+        }
     }
 
     dispose() {
@@ -102,8 +112,10 @@ class DayNightCycle {
             return;
         }
 
-        const hourDelta = (deltaTime / this.cycleDuration) * 24;
-        this.hour = (this.hour + hourDelta) % 24;
+        if (!this.frozen) {
+            const hourDelta = (deltaTime / this.cycleDuration) * 24;
+            this.hour = (this.hour + hourDelta) % 24;
+        }
 
         const kf = this._sample(this.hour);
 
