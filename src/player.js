@@ -119,7 +119,7 @@ class Player {
         this.scene.add(this.modelGroup);
 
         // Foot light — turns on in darkness
-        this.footLight = new THREE.PointLight(0xffaa44, 0, 10);
+        this.footLight = new THREE.PointLight(0xffaa44, 0, 20);
         this.footLight.position.set(0, 0.1, 0);
         this.footLight.decay = 2;
         this.modelGroup.add(this.footLight);
