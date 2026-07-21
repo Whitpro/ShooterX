@@ -142,99 +142,229 @@ class UI {
         this.monsterInfoScreen = document.createElement('div');
         this.monsterInfoScreen.id = 'monsterInfoScreen';
         this.monsterInfoScreen.style.display = 'none';
-        this.monsterInfoScreen.style.position = 'fixed';
-        this.monsterInfoScreen.style.top = '0';
-        this.monsterInfoScreen.style.left = '0';
-        this.monsterInfoScreen.style.width = '100vw';
-        this.monsterInfoScreen.style.height = '100vh';
-        this.monsterInfoScreen.style.background = 'rgba(0,0,0,0.95)';
-        this.monsterInfoScreen.style.zIndex = '9999';
-        this.monsterInfoScreen.style.display = 'flex';
-        this.monsterInfoScreen.style.flexDirection = 'column';
-        this.monsterInfoScreen.style.justifyContent = 'center';
-        this.monsterInfoScreen.style.alignItems = 'center';
+
+        const infoStyle = document.createElement('style');
+        infoStyle.textContent = `
+            #monsterInfoScreen {
+                position: fixed; inset: 0;
+                display: flex; align-items: center; justify-content: center;
+                background: rgba(0,0,0,0.88);
+                z-index: 9999;
+                backdrop-filter: blur(8px);
+            }
+            #monsterInfoScreen .info-panel {
+                background: rgba(10, 10, 18, 0.95);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 14px;
+                width: 780px; max-width: 92vw;
+                max-height: 88vh;
+                display: flex; flex-direction: column;
+                overflow: hidden;
+            }
+            #monsterInfoScreen .info-header {
+                display: flex; align-items: center; justify-content: center;
+                padding: 28px 32px 0;
+            }
+            #monsterInfoScreen .info-header h1 {
+                font-size: 36px; font-weight: 700; color: #fff;
+                letter-spacing: 4px; margin: 0;
+            }
+            #monsterInfoScreen .info-tabs {
+                display: flex; justify-content: center; gap: 0;
+                padding: 20px 32px 0;
+            }
+            #monsterInfoScreen .info-tab {
+                padding: 12px 36px; font-size: 14px; font-weight: 600;
+                letter-spacing: 2px; text-transform: uppercase;
+                background: transparent; border: none;
+                color: rgba(255,255,255,0.35); cursor: pointer;
+                border-bottom: 2px solid transparent;
+                transition: all 0.2s;
+            }
+            #monsterInfoScreen .info-tab:hover { color: rgba(255,255,255,0.6); }
+            #monsterInfoScreen .info-tab.active {
+                color: #fff; border-bottom-color: #5a6aff;
+            }
+            #monsterInfoScreen .info-divider {
+                width: 80%; height: 1px; margin: 16px auto 0;
+                background: rgba(255,255,255,0.08);
+            }
+            #monsterInfoScreen .info-body {
+                flex: 1; overflow-y: auto; padding: 20px 28px 28px;
+            }
+            #monsterInfoScreen .info-body::-webkit-scrollbar { width: 6px; }
+            #monsterInfoScreen .info-body::-webkit-scrollbar-track { background: transparent; }
+            #monsterInfoScreen .info-body::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+            #monsterInfoScreen .enemy-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+                gap: 16px;
+            }
+            #monsterInfoScreen .enemy-card {
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.06);
+                border-radius: 10px;
+                padding: 18px 16px;
+                text-align: center;
+                transition: all 0.2s;
+            }
+            #monsterInfoScreen .enemy-card:hover {
+                background: rgba(255,255,255,0.07);
+                border-color: rgba(255,255,255,0.12);
+                transform: translateY(-2px);
+            }
+            #monsterInfoScreen .enemy-img {
+                width: 80px; height: 80px;
+                object-fit: contain;
+                margin-bottom: 12px;
+                filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+            }
+            #monsterInfoScreen .enemy-name {
+                font-size: 16px; font-weight: 700; margin-bottom: 10px;
+                letter-spacing: 1px;
+            }
+            #monsterInfoScreen .enemy-stats {
+                display: grid; grid-template-columns: 1fr 1fr;
+                gap: 4px 8px; font-size: 12px;
+            }
+            #monsterInfoScreen .enemy-stats .stat-label {
+                color: rgba(255,255,255,0.35); text-align: right;
+            }
+            #monsterInfoScreen .enemy-stats .stat-value {
+                color: rgba(255,255,255,0.75); text-align: left;
+            }
+            #monsterInfoScreen .enemy-desc {
+                margin-top: 10px; font-size: 11px; color: rgba(255,255,255,0.4);
+                line-height: 1.5;
+            }
+
+            #monsterInfoScreen .powerup-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+                gap: 16px;
+            }
+            #monsterInfoScreen .powerup-card {
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.06);
+                border-radius: 10px;
+                padding: 24px 18px;
+                text-align: center;
+                transition: all 0.2s;
+            }
+            #monsterInfoScreen .powerup-card:hover {
+                background: rgba(255,255,255,0.07);
+                border-color: rgba(255,255,255,0.12);
+                transform: translateY(-2px);
+            }
+            #monsterInfoScreen .powerup-icon {
+                width: 48px; height: 48px;
+                border-radius: 50%;
+                margin: 0 auto 14px;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 22px;
+            }
+            #monsterInfoScreen .powerup-name {
+                font-size: 15px; font-weight: 700; margin-bottom: 8px;
+                letter-spacing: 1px; color: #fff;
+            }
+            #monsterInfoScreen .powerup-desc {
+                font-size: 12px; color: rgba(255,255,255,0.45);
+                line-height: 1.6;
+            }
+
+            #monsterInfoScreen .info-footer {
+                padding: 0 32px 24px;
+                display: flex; justify-content: center;
+            }
+            #monsterInfoScreen .info-back-btn {
+                padding: 12px 48px;
+                background: linear-gradient(135deg, #c62828, #8e0000);
+                color: #fff; border: none; border-radius: 8px;
+                font-size: 16px; font-weight: 600; cursor: pointer;
+                letter-spacing: 2px; transition: all 0.2s;
+            }
+            #monsterInfoScreen .info-back-btn:hover {
+                background: linear-gradient(135deg, #e53935, #b71c1c);
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            }
+            #monsterInfoScreen .info-tab-content { display: none; }
+            #monsterInfoScreen .info-tab-content.active { display: block; }
+        `;
+        document.head.appendChild(infoStyle);
+
+        const enemyData = [
+            { id: 'grunt', name: 'GRUNT', hp: 100, spd: 3.5, dmg: 10, pts: 100, range: 1.2, color: '#ff4444', desc: 'Basic enemy that slowly approaches and attacks at close range.' },
+            { id: 'scout', name: 'SCOUT', hp: 75, spd: 5, dmg: 8, pts: 150, range: 0.9, color: '#44ff44', desc: 'Fast-moving enemy that tries to flank and overwhelm.' },
+            { id: 'heavy', name: 'HEAVY', hp: 200, spd: 2.5, dmg: 15, pts: 200, range: 1.8, color: '#4488ff', desc: 'Slow but tough. Absorbs heavy damage and hits hard.' },
+            { id: 'sniper', name: 'SNIPER', hp: 60, spd: 3, dmg: 25, pts: 250, range: 15, color: '#ffff44', desc: 'Long-range attacker with high damage but low health.' },
+            { id: 'commander', name: 'COMMANDER', hp: 175, spd: 4, dmg: 12, pts: 300, range: 7, color: '#ff44ff', desc: 'Buffs nearby enemies and coordinates group attacks.' },
+            { id: 'boss', name: 'BOSS', hp: 400, spd: 3, dmg: 30, pts: 500, range: 9, color: '#ff9800', desc: 'Extremely tough with special attacks and massive health.' }
+        ];
+
+        const powerupData = [
+            { name: 'HEALTH BOOST', color: '#ff4444', bg: 'rgba(255,68,68,0.15)', icon: '+', desc: 'Restores 50 health instantly.' },
+            { name: 'AMMO REFILL', color: '#44ff44', bg: 'rgba(68,255,68,0.15)', icon: '~', desc: 'Temporarily increases max ammo to 50 and refills. Lasts 20 seconds.' },
+            { name: 'RAPID FIRE', color: '#00bbff', bg: 'rgba(0,187,255,0.15)', icon: '!', desc: 'Greatly increases fire rate for 10 seconds.' }
+        ];
+
         this.monsterInfoScreen.innerHTML = `
-            <div style="background:#181818;padding:2rem;border-radius:10px;max-width:90vw;max-height:90vh;overflow-y:auto;text-align:center;color:#fff;box-shadow:0 0 40px 10px #000a;">
-                <h1>Enemy Types</h1>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.5rem;margin:2rem 0;padding:1rem;">
-                    <div style="background:rgba(0,0,0,0.4);padding:1.5rem;border-radius:8px;box-shadow:0 2px 8px #0006;">
-                        <h3 style='color:#ff5252;'>Grunt</h3>
-                        <p>Health: 100</p>
-                        <p>Speed: Normal</p>
-                        <p>Damage: 10</p>
-                        <p>Points: 100</p>
-                        <p style='margin-top:1em;color:#bdbdbd;'>Basic enemy that slowly approaches and attacks the player at close range.</p>
-                        <p style='color:#ff5252;'>Color: Red</p>
+            <div class="info-panel">
+                <div class="info-header"><h1>INFO</h1></div>
+                <div class="info-tabs">
+                    <button class="info-tab active" data-tab="enemies">Enemies</button>
+                    <button class="info-tab" data-tab="powerups">Powerups</button>
+                </div>
+                <div class="info-divider"></div>
+                <div class="info-body">
+                    <div class="info-tab-content active" id="infoTabEnemies">
+                        <div class="enemy-grid">
+                            ${enemyData.map(e => `
+                                <div class="enemy-card">
+                                    <img class="enemy-img" src="../Ui stuff/enemys/${e.id}.png" alt="${e.name}">
+                                    <div class="enemy-name" style="color:${e.color}">${e.name}</div>
+                                    <div class="enemy-stats">
+                                        <span class="stat-label">Health</span><span class="stat-value">${e.hp}</span>
+                                        <span class="stat-label">Speed</span><span class="stat-value">${e.spd}</span>
+                                        <span class="stat-label">Damage</span><span class="stat-value">${e.dmg}</span>
+                                        <span class="stat-label">Points</span><span class="stat-value">${e.pts}</span>
+                                        <span class="stat-label">Range</span><span class="stat-value">${e.range}</span>
+                                    </div>
+                                    <div class="enemy-desc">${e.desc}</div>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
-                    <div style="background:rgba(0,0,0,0.4);padding:1.5rem;border-radius:8px;box-shadow:0 2px 8px #0006;">
-                        <h3 style='color:#ff5252;'>Scout</h3>
-                        <p>Health: 75</p>
-                        <p>Speed: Fast</p>
-                        <p>Damage: 8</p>
-                        <p>Points: 150</p>
-                        <p style='margin-top:1em;color:#bdbdbd;'>Fast-moving enemy that tries to flank and overwhelm the player.</p>
-                        <p style='color:#4CAF50;'>Color: Green</p>
-                    </div>
-                    <div style="background:rgba(0,0,0,0.4);padding:1.5rem;border-radius:8px;box-shadow:0 2px 8px #0006;">
-                        <h3 style='color:#ff5252;'>Heavy</h3>
-                        <p>Health: 200</p>
-                        <p>Speed: Slow</p>
-                        <p>Damage: 15</p>
-                        <p>Points: 200</p>
-                        <p style='margin-top:1em;color:#bdbdbd;'>Slow but tough enemy that can absorb a lot of damage and deals heavy hits.</p>
-                        <p style='color:#FFC107;'>Color: Yellow</p>
-                    </div>
-                    <div style="background:rgba(0,0,0,0.4);padding:1.5rem;border-radius:8px;box-shadow:0 2px 8px #0006;">
-                        <h3 style='color:#ff5252;'>Sniper</h3>
-                        <p>Health: 60</p>
-                        <p>Speed: Normal</p>
-                        <p>Damage: 25</p>
-                        <p>Points: 250</p>
-                        <p style='margin-top:1em;color:#bdbdbd;'>Attacks from a distance with high-damage shots, but has low health.</p>
-                        <p style='color:#2196F3;'>Color: Blue</p>
-                    </div>
-                    <div style="background:rgba(0,0,0,0.4);padding:1.5rem;border-radius:8px;box-shadow:0 2px 8px #0006;">
-                        <h3 style='color:#ff5252;'>Commander</h3>
-                        <p>Health: 175</p>
-                        <p>Speed: Fast</p>
-                        <p>Damage: 12</p>
-                        <p>Points: 300</p>
-                        <p style='margin-top:1em;color:#bdbdbd;'>Buffs nearby enemies and coordinates group attacks.</p>
-                        <p style='color:#9C27B0;'>Color: Purple</p>
-                    </div>
-                    <div style="background:rgba(0,0,0,0.4);padding:1.5rem;border-radius:8px;box-shadow:0 2px 8px #0006;">
-                        <h3 style='color:#ff5252;'>Boss</h3>
-                        <p>Health: 400</p>
-                        <p>Speed: Normal</p>
-                        <p>Damage: 30</p>
-                        <p>Points: 500</p>
-                        <p style='margin-top:1em;color:#bdbdbd;'>Extremely tough and dangerous, with special attacks and high health.</p>
-                        <p style='color:#FF5722;'>Color: Orange</p>
+                    <div class="info-tab-content" id="infoTabPowerups">
+                        <div class="powerup-grid">
+                            ${powerupData.map(p => `
+                                <div class="powerup-card">
+                                    <div class="powerup-icon" style="background:${p.bg};color:${p.color}">${p.icon}</div>
+                                    <div class="powerup-name" style="color:${p.color}">${p.name}</div>
+                                    <div class="powerup-desc">${p.desc}</div>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 </div>
-                <h1 style="margin-top:2.5rem;">Power-Ups</h1>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.5rem;margin:2rem 0;padding:1rem;">
-                    <div style="background:rgba(0,0,0,0.4);padding:1.5rem;border-radius:8px;box-shadow:0 2px 8px #0006;">
-                        <h3 style='color:#44ff44;'>Health Boost</h3>
-                        <p>Restores 50 health instantly.</p>
-                        <p style='color:#ff4444;'>Color: Red</p>
-                    </div>
-                    <div style="background:rgba(0,0,0,0.4);padding:1.5rem;border-radius:8px;box-shadow:0 2px 8px #0006;">
-                        <h3 style='color:#44ff44;'>Ammo Refill</h3>
-                        <p>Temporarily increases max ammo to 50 and refills ammo. Lasts 20 seconds, then reverts to 30/30.</p>
-                        <p style='color:#44ff44;'>Color: Green</p>
-                    </div>
-                    <div style="background:rgba(0,0,0,0.4);padding:1.5rem;border-radius:8px;box-shadow:0 2px 8px #0006;">
-                        <h3 style='color:#00bbff;'>Rapid Fire</h3>
-                        <p>Greatly increases fire rate for 10 seconds.</p>
-                        <p style='color:#00bbff;'>Color: Blue</p>
-                    </div>
+                <div class="info-footer">
+                    <button class="info-back-btn" id="monsterInfoBackButton">BACK</button>
                 </div>
-                <button id="monsterInfoBackButton" style="margin-top:1rem;padding:0.8rem 2rem;font-size:1.1rem;background:#ff5252;color:white;border:none;border-radius:5px;cursor:pointer;">Back</button>
             </div>
         `;
-        this.monsterInfoScreen.style.display = 'none';
         document.body.appendChild(this.monsterInfoScreen);
+
+        // Tab switching
+        this.monsterInfoScreen.querySelectorAll('.info-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                this.monsterInfoScreen.querySelectorAll('.info-tab').forEach(t => t.classList.remove('active'));
+                this.monsterInfoScreen.querySelectorAll('.info-tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                const target = tab.dataset.tab === 'enemies' ? 'infoTabEnemies' : 'infoTabPowerups';
+                document.getElementById(target).classList.add('active');
+            });
+        });
 
         // Create black overlay for transitions
         this.createBlackOverlay();
@@ -980,12 +1110,18 @@ class UI {
         }
         this.hideAllMenus();
         this.monsterInfoScreen.style.display = 'flex';
-        // Set up the back button handler every time the screen is shown
+
+        // Reset to enemies tab
+        this.monsterInfoScreen.querySelectorAll('.info-tab').forEach(t => t.classList.remove('active'));
+        this.monsterInfoScreen.querySelectorAll('.info-tab-content').forEach(c => c.classList.remove('active'));
+        const enemiesTab = this.monsterInfoScreen.querySelector('[data-tab="enemies"]');
+        if (enemiesTab) enemiesTab.classList.add('active');
+        const enemiesContent = document.getElementById('infoTabEnemies');
+        if (enemiesContent) enemiesContent.classList.add('active');
+
         const backBtn = document.getElementById('monsterInfoBackButton');
         if (backBtn) {
-            backBtn.onclick = () => {
-                this.hideMonsterInfoScreen();
-            };
+            backBtn.onclick = () => this.hideMonsterInfoScreen();
         }
     }
 
