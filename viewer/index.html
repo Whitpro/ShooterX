@@ -223,7 +223,61 @@
             color: #7c8aff;
             z-index: 20;
             pointer-events: none;
+            transition: opacity 0.25s;
         }
+
+        /* Photo mode button */
+        #photo-btn {
+            position: fixed;
+            top: 12px;
+            right: 296px;
+            background: rgba(18, 18, 31, 0.85);
+            border: 1px solid #2a2a40;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #999;
+            cursor: pointer;
+            z-index: 20;
+            transition: all 0.2s;
+        }
+        #photo-btn:hover {
+            background: rgba(30, 30, 60, 0.95);
+            color: #ccc;
+            border-color: #4a4a70;
+        }
+        #photo-btn.active {
+            background: rgba(90, 106, 255, 0.25);
+            border-color: #5a6aff;
+            color: #8c9aff;
+        }
+
+        /* Photo mode hint */
+        #photo-hint {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(18, 18, 31, 0.85);
+            border: 1px solid #2a2a40;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #666;
+            z-index: 20;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        #photo-hint.visible {
+            opacity: 1;
+        }
+
+        /* Photo mode: hide everything */
+        body.photo-mode #sidebar,
+        body.photo-mode #right-panel,
+        body.photo-mode #camera-mode,
+        body.photo-mode #fps { opacity: 0; pointer-events: none; }
 
         /* Drop zone overlay */
         #drop-overlay {
@@ -278,6 +332,12 @@
 
     <!-- Camera mode indicator -->
     <div id="camera-mode">Orbit Mode &middot; G Move &middot; R Rotate &middot; S Scale</div>
+
+    <!-- Photo mode button -->
+    <button id="photo-btn" onclick="togglePhotoMode()" title="Toggle photo mode (H)">&#128247; Photo</button>
+
+    <!-- Photo mode hidden hint -->
+    <div id="photo-hint">Press H to exit photo mode</div>
 
     <!-- Right Panel: Lighting & Scene Controls -->
     <div id="right-panel">
@@ -1003,8 +1063,8 @@
     bindSlider('fogDensity', 'fogDensityVal', v => {
         if (scene.fog) scene.fog.density = v;
     });
-    bindCheckbox('gridEnabled', v => gridHelper.visible = v);
-    bindCheckbox('axesEnabled', v => axesHelper.visible = v);
+    bindCheckbox('gridEnabled', v => { if (!photoMode) gridHelper.visible = v; });
+    bindCheckbox('axesEnabled', v => { if (!photoMode) axesHelper.visible = v; });
     bindCheckbox('wireframe', v => {
         if (!currentModel) return;
         currentModel.traverse(c => {
@@ -1086,11 +1146,27 @@
     };
 
     // Keyboard shortcuts for transform modes: G = translate, R = rotate, S = scale
+    let photoMode = false;
+    const photoBtn = document.getElementById('photo-btn');
+    const photoHint = document.getElementById('photo-hint');
+
+    window.togglePhotoMode = function() {
+        photoMode = !photoMode;
+        document.body.classList.toggle('photo-mode', photoMode);
+        photoBtn.classList.toggle('active', photoMode);
+        photoHint.classList.toggle('visible', photoMode);
+        photoBtn.innerHTML = photoMode ? '&#128247; Exit Photo' : '&#128247; Photo';
+        transformControls.visible = !photoMode;
+        gridHelper.visible = !photoMode && document.getElementById('gridEnabled').checked;
+        axesHelper.visible = !photoMode && document.getElementById('axesEnabled').checked;
+    };
+
     document.addEventListener('keydown', e => {
         if (e.target.tagName === 'INPUT') return;
         if (e.code === 'KeyG') setTransformMode('translate');
         else if (e.code === 'KeyR') setTransformMode('rotate');
         else if (e.code === 'KeyS' && !e.ctrlKey) setTransformMode('scale');
+        else if (e.code === 'KeyH') togglePhotoMode();
     });
 
     // ── Fly Camera ──
