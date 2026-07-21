@@ -368,7 +368,7 @@ class Environment {
             this.skyDome = null;
         }
         // Restore flat background as fallback
-        this.scene.background = new THREE.Color(0x5c7aaa);
+        this.scene.background = new THREE.Color(0xcc8866);
 
         // Clean up extra lights stored by reference
         if (this.sunLight) {
@@ -462,7 +462,7 @@ class Environment {
         this.createSkyDome();
         
         // Fog blended to match the horizon color of the sky dome
-        this.scene.fog = new THREE.FogExp2(0x8a9aaa, 0.0035);
+        this.scene.fog = new THREE.FogExp2(0xcc8866, 0.0035);
 
         this.createGround();
         
@@ -493,11 +493,11 @@ class Environment {
         canvas.height = 256;
         const ctx = canvas.getContext('2d');
         const grad = ctx.createLinearGradient(0, 0, 0, 256);
-        grad.addColorStop(0,   '#0f1f3f');  // deep navy at zenith
-        grad.addColorStop(0.3, '#2a4a7a');  // mid blue
-        grad.addColorStop(0.6, '#5a8aaa');  // lighter blue
-        grad.addColorStop(0.8, '#8a9aaa');  // hazy horizon
-        grad.addColorStop(1,   '#9a8a7a');  // warm haze at the horizon line
+        grad.addColorStop(0,   '#2a1030');  // deep purple at zenith
+        grad.addColorStop(0.3, '#6a3020');  // dark orange
+        grad.addColorStop(0.6, '#aa5533');  // orange
+        grad.addColorStop(0.8, '#ddaa66');  // golden at horizon
+        grad.addColorStop(1,   '#eebb99');  // warm peach at the horizon line
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, 1, 256);
         const texture = new THREE.CanvasTexture(canvas);
@@ -883,13 +883,13 @@ class Environment {
     setupLighting() {
         // Brighter lighting with visible sun and godrays
 
-        // 1. Ambient light — lowered for stronger shadow contrast
-        const ambientLight = new THREE.AmbientLight(0x404060, 0.45);
+        // 1. Ambient light — warm evening tone
+        const ambientLight = new THREE.AmbientLight(0x603830, 0.35);
         this.scene.add(ambientLight);
 
-        // 2. Directional light (sun) — main light
-        const sunPosition = new THREE.Vector3(50, 100, 50);
-        const sunLight = new THREE.DirectionalLight(0xffeebb, 1.8);
+        // 2. Directional light (sun) — low warm sun
+        const sunPosition = new THREE.Vector3(60, 25, 20);
+        const sunLight = new THREE.DirectionalLight(0xff8833, 1.2);
         sunLight.position.copy(sunPosition);
         sunLight.castShadow = true;
 
@@ -912,19 +912,19 @@ class Environment {
         this.scene.add(sunLight);
         this.sunLight = sunLight;
 
-        // 3. Hemisphere light
-        const hemiLight = new THREE.HemisphereLight(0x7088c0, 0x3a2a20, 0.85);
+        // 3. Hemisphere light — warm sky, dark ground
+        const hemiLight = new THREE.HemisphereLight(0xcc8855, 0x2a1a10, 0.6);
         hemiLight.position.set(0, 50, 0);
         this.scene.add(hemiLight);
 
-        // 4. Fill light
-        const fillLight = new THREE.PointLight(0xd0d0c0, 0.6, 80);
+        // 4. Fill light — warm golden
+        const fillLight = new THREE.PointLight(0xff8844, 0.5, 80);
         fillLight.position.set(0, 15, 0);
         this.scene.add(fillLight);
 
-        // 5. Rim backlight — cool edge highlight from opposite side
-        const rimLight = new THREE.DirectionalLight(0x8899cc, 0.35);
-        rimLight.position.set(-40, 60, -40);
+        // 5. Rim backlight — warm edge highlight
+        const rimLight = new THREE.DirectionalLight(0xff6633, 0.2);
+        rimLight.position.set(-40, 40, -40);
         rimLight.castShadow = false;
         this.scene.add(rimLight);
         this.rimLight = rimLight;
@@ -975,7 +975,7 @@ class Environment {
 
         // 1. Hot sun core sphere
         const sunGeo = new THREE.SphereGeometry(3, 16, 16);
-        const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd44 });
+        const sunMat = new THREE.MeshBasicMaterial({ color: 0xff6622 });
         const sunMesh = new THREE.Mesh(sunGeo, sunMat);
         sunMesh.position.copy(position);
         this.scene.add(sunMesh);
@@ -983,11 +983,11 @@ class Environment {
 
         // 2. Core glow — tight bright burst
         const coreTex = makeGlowTexture([
-            [0,   'rgba(255, 235, 180, 1)'],
-            [0.12, 'rgba(255, 215, 105, 0.8)'],
-            [0.35, 'rgba(255, 185,  55, 0.25)'],
-            [0.6, 'rgba(255, 155,  35, 0.05)'],
-            [1,   'rgba(255, 130,  10, 0)']
+            [0,   'rgba(255, 200, 100, 1)'],
+            [0.12, 'rgba(255, 150,  50, 0.8)'],
+            [0.35, 'rgba(255, 100,  30, 0.25)'],
+            [0.6, 'rgba(200,  70,  20, 0.05)'],
+            [1,   'rgba(150,  40,  10, 0)']
         ]);
         const coreDisc = makeGlowDisc(coreTex, 60);
         this.scene.add(coreDisc);
@@ -995,10 +995,10 @@ class Environment {
 
         // 3. Mid glow — warm halo
         const midTex = makeGlowTexture([
-            [0,   'rgba(255, 210, 130, 0.55)'],
-            [0.18, 'rgba(255, 185,  85, 0.22)'],
-            [0.4, 'rgba(255, 160,  55, 0.06)'],
-            [1,   'rgba(255, 140,  35, 0)']
+            [0,   'rgba(255, 180,  80, 0.55)'],
+            [0.18, 'rgba(255, 140,  50, 0.22)'],
+            [0.4, 'rgba(200, 100,  30, 0.06)'],
+            [1,   'rgba(160,  70,  20, 0)']
         ], 256);
         const midDisc = makeGlowDisc(midTex, 100);
         this.scene.add(midDisc);
