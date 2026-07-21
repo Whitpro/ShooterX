@@ -233,10 +233,10 @@ class Settings {
                             <div class="setting-row">
                                 <div>
                                     <div class="setting-label">Field of View</div>
-                                    <div class="setting-desc">Camera field of view (not yet implemented)</div>
+                                    <div class="setting-desc">Camera field of view</div>
                                 </div>
                                 <div class="setting-control">
-                                    <input type="range" id="fieldOfView" min="50" max="120" step="1" value="${this.settings.fieldOfView}" disabled style="opacity:0.4">
+                                    <input type="range" id="fieldOfView" min="50" max="120" step="1" value="${this.settings.fieldOfView}">
                                     <span class="setting-value" id="fieldOfViewValue">${this.settings.fieldOfView}</span>
                                 </div>
                             </div>
@@ -395,6 +395,17 @@ class Settings {
                 this.applyAutoReload(autoReloadToggle.checked);
             };
         }
+
+        const fovSlider = document.getElementById('fieldOfView');
+        const fovValue = document.getElementById('fieldOfViewValue');
+        if (fovSlider && fovValue) {
+            fovSlider.oninput = () => {
+                const value = parseInt(fovSlider.value);
+                this.settings.fieldOfView = value;
+                fovValue.textContent = value;
+                this.applyFOV(value);
+            };
+        }
     }
     
     createFpsCounter() {
@@ -496,6 +507,13 @@ class Settings {
             this.game.weapon.autoReload = enabled;
         }
     }
+
+    applyFOV(fov) {
+        if (this.game && this.game.camera) {
+            this.game.camera.fov = fov;
+            this.game.camera.updateProjectionMatrix();
+        }
+    }
     
     applyFPSLock(fpsLimit) {
         if (this.game) {
@@ -518,6 +536,7 @@ class Settings {
         this.applyFpsCounterVisibility(this.settings.showFpsCounter);
         this.applyDayNightCycle();
         this.applyAutoReload(this.settings.autoReload);
+        this.applyFOV(this.settings.fieldOfView);
     }
 
     applyDayNightCycle() {

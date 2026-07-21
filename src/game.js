@@ -40,7 +40,15 @@ class GameEngine {
             
             // Initialize core components
             this.scene = new THREE.Scene();
-            this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            let savedFov = 75;
+            try {
+                const savedSettings = localStorage.getItem('shooterx-settings');
+                if (savedSettings) {
+                    const parsed = JSON.parse(savedSettings);
+                    if (parsed.fieldOfView) savedFov = parsed.fieldOfView;
+                }
+            } catch (e) {}
+            this.camera = new THREE.PerspectiveCamera(savedFov, window.innerWidth / window.innerHeight, 0.1, 1000);
             
             // Try to use WebGPU renderer with fallback to WebGL
             try {
