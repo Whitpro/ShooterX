@@ -406,7 +406,7 @@ class Enemy {
         const distanceToPlayer = this._toPlayer.length();
 
         if (distanceToPlayer <= this.attackRange) {
-            player.takeDamage(this.damage);
+            player.takeDamage(this.damage, this.position.clone());
             this.attackCooldown = this.attackDelay;
         }
     }

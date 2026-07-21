@@ -9,6 +9,7 @@ import Environment from './environment.js';
 import Input from './input.js';
 import GAME_STATES from './gameStates.js';
 import Settings from './settings.js';
+import { HitIndicator } from './hitIndicator.js';
 
 // Debug mode flag
 const DEBUG = process.env.NODE_ENV === 'development';
@@ -200,6 +201,8 @@ class GameEngine {
             // Initialize settings
             this.settings = new Settings(this, this.ui);
             debug('Settings created');
+
+            this.hitIndicator = new HitIndicator();
             
             // Apply settings
             if (this.settings) {

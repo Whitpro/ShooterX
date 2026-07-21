@@ -786,9 +786,14 @@ class Player {
         this.weapon.position.y = 0.2 + weaponBob;
     }
 
-    takeDamage(amount) {
+    takeDamage(amount, attackerPosition) {
         if (this.isGodMode) return; // Ignore damage if god mode is enabled
         this.health -= amount;
+
+        if (window.gameEngine && window.gameEngine.hitIndicator) {
+            window.gameEngine.hitIndicator.showDamage(attackerPosition, this.camera);
+        }
+
         if (this.health <= 0) {
             this.health = 0;
             // Trigger game over
