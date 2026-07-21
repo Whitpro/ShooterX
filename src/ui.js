@@ -395,33 +395,28 @@ class UI {
     showMainMenu() {
         console.log('Showing main menu');
         if (this.mainMenu) {
-            // Ensure we set display: flex for proper layout
             this.mainMenu.style.display = 'flex';
             
-            // Add visible class for animation
             setTimeout(() => {
                 this.mainMenu.classList.add('visible');
                 
-                // Add a staggered animation to the buttons
-                const buttons = this.mainMenu.querySelectorAll('button');
+                const buttons = this.mainMenu.querySelectorAll('.play-button, .quit-button');
                 buttons.forEach((button, index) => {
                     button.style.opacity = '0';
-                    button.style.transform = 'translateY(20px) translateZ(0)';
+                    button.style.transform = 'translateY(12px)';
                     setTimeout(() => {
                         button.style.opacity = '1';
-                        button.style.transform = 'translateY(0) translateZ(0)';
-                    }, 200 + (index * 150));
+                        button.style.transform = 'translateY(0)';
+                    }, 150 + (index * 100));
                 });
                 
-                // Animate the title
-                const title = this.mainMenu.querySelector('h1');
-                if (title) {
-                    title.style.opacity = '0';
-                    title.style.transform = 'scale(0.9) translateY(-20px)';
+                const icons = this.mainMenu.querySelector('.menu-icons');
+                if (icons) {
+                    icons.style.opacity = '0';
                     setTimeout(() => {
-                        title.style.opacity = '1';
-                        title.style.transform = 'scale(1) translateY(0)';
-                    }, 100);
+                        icons.style.opacity = '1';
+                        icons.style.transition = 'opacity 0.3s ease';
+                    }, 400);
                 }
             }, 10);
         }

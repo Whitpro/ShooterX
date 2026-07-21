@@ -496,113 +496,98 @@
             font-style: italic;
         }
 
-        /* Improved Main Menu */
+        /* Main Menu */
         #mainMenu {
-            background: rgba(0, 0, 0, 0.85);
-            border: 2px solid rgba(0, 255, 170, 0.3);
-            box-shadow: 0 0 50px rgba(0, 255, 170, 0.3);
-            backdrop-filter: blur(15px);
-            padding: 40px 30px;
-            border-radius: 15px;
-            width: 450px;
+            background: rgba(10, 10, 18, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            padding: 40px 36px;
+            border-radius: 12px;
+            width: 400px;
         }
         #mainMenu h1 {
-            font-size: 72px;
-            font-weight: 800;
-            margin-bottom: 40px;
+            font-size: 64px;
+            font-weight: 700;
+            margin-bottom: 36px;
             color: #fff;
-            text-shadow: 0 0 20px rgba(0, 255, 170, 0.9);
-            letter-spacing: 5px;
-            position: relative;
-            animation: mainTitlePulse 3s infinite alternate;
-        }
-        #mainMenu h1::after {
-            content: '';
-            position: absolute;
-            width: 80%;
-            height: 2px;
-            background: linear-gradient(90deg, 
-                rgba(0, 0, 0, 0), 
-                rgba(0, 255, 170, 0.7), 
-                rgba(0, 0, 0, 0));
-            bottom: -10px;
-            left: 10%;
-            animation: lineGlow 2s infinite alternate;
-        }
-        @keyframes mainTitlePulse {
-            0% { text-shadow: 0 0 20px rgba(0, 255, 170, 0.7); }
-            100% { text-shadow: 0 0 30px rgba(0, 255, 170, 1), 0 0 50px rgba(0, 255, 170, 0.5); }
-        }
-        @keyframes lineGlow {
-            0% { opacity: 0.5; box-shadow: 0 0 10px rgba(0, 255, 170, 0.5); }
-            100% { opacity: 1; box-shadow: 0 0 20px rgba(0, 255, 170, 0.8); }
+            letter-spacing: 4px;
         }
         #mainMenu button {
-            margin: 20px auto;
-            width: 300px;
-            padding: 20px 30px;
-            font-size: 28px;
+            margin: 12px auto;
+            width: 280px;
+            padding: 16px 30px;
+            font-size: 24px;
             font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.2s ease;
             border-radius: 8px;
             letter-spacing: 3px;
-            position: relative;
-            overflow: hidden;
-            transform: translateZ(0);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+            box-shadow: none;
         }
         #mainMenu button:hover {
-            transform: translateY(-5px) scale(1.03) translateZ(0);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
         }
         #mainMenu button:active {
-            transform: translateY(2px) scale(0.98) translateZ(0);
+            transform: translateY(1px);
         }
-        #mainMenu .start-button {
-            background: linear-gradient(135deg, #43A047, #1B5E20);
-            border-bottom: 5px solid #0d4413;
-            box-shadow: 0 5px 25px rgba(76, 175, 80, 0.5);
+        #mainMenu .play-button {
+            background: linear-gradient(135deg, #43A047, #2E7D32);
+            color: #fff;
+            border: none;
         }
-        #mainMenu .start-button:hover {
-            background: linear-gradient(135deg, #4CAF50, #2E7D32);
-            box-shadow: 0 15px 30px rgba(76, 175, 80, 0.6);
+        #mainMenu .play-button:hover {
+            background: linear-gradient(135deg, #4CAF50, #388E3C);
         }
         #mainMenu .quit-button {
-            background: linear-gradient(135deg, #E53935, #B71C1C);
-            border-bottom: 5px solid #7f1717;
-            box-shadow: 0 5px 25px rgba(229, 57, 53, 0.5);
+            background: linear-gradient(135deg, #c62828, #8e0000);
+            color: #fff;
+            border: none;
         }
         #mainMenu .quit-button:hover {
-            background: linear-gradient(135deg, #F44336, #C62828);
-            box-shadow: 0 15px 30px rgba(229, 57, 53, 0.6);
+            background: linear-gradient(135deg, #e53935, #b71c1c);
         }
-        #mainMenu::before {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: linear-gradient(45deg, 
-                rgba(0, 255, 170, 0.5), 
-                rgba(0, 0, 0, 0), 
-                rgba(0, 0, 0, 0), 
-                rgba(0, 255, 170, 0.5));
-            z-index: -1;
-            border-radius: 15px;
-            animation: mainMenuBorder 6s linear infinite;
+        .menu-divider {
+            width: 60%;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.15);
+            margin: 24px auto;
         }
-        @keyframes mainMenuBorder {
-            0% { filter: hue-rotate(0deg); opacity: 0.7; }
-            50% { opacity: 1; }
-            100% { filter: hue-rotate(90deg); opacity: 0.7; }
+        .menu-icons {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 8px;
+        }
+        .icon-button {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 56px !important;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 !important;
+        }
+        .icon-button img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+        }
+        .icon-button:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
         }
         .version-info {
             position: absolute;
             bottom: 10px;
             right: 15px;
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.3);
             letter-spacing: 1px;
         }
 
@@ -635,10 +620,17 @@
         <div id="mainMenu" class="menu">
             <div class="menu-content">
                 <h1>SHOOTER X</h1>
-                <button id="startButton" class="start-button">START GAME</button>
-                <button id="monsterInfoButton" class="menu-button">INFO</button>
-                <button id="settingsButton" class="menu-button">SETTINGS</button>
-                <button id="quitButton" class="quit-button">QUIT GAME</button>
+                <button id="startButton" class="play-button">PLAY</button>
+                <button id="quitButton" class="quit-button">QUIT</button>
+                <div class="menu-divider"></div>
+                <div class="menu-icons">
+                    <button id="monsterInfoButton" class="icon-button">
+                        <img src="../Ui stuff/info.png" alt="Info">
+                    </button>
+                    <button id="settingsButton" class="icon-button">
+                        <img src="../Ui stuff/settings.png" alt="Settings">
+                    </button>
+                </div>
                 <div class="version-info">v1.3.0</div>
             </div>
         </div>
