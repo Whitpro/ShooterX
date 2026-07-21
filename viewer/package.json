@@ -1,0 +1,16 @@
+{
+  "name": "shooter-x-viewer",
+  "version": "1.0.0",
+  "description": "Shooter X Model Viewer",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "start": "npx electron@37.2.1 ."
+  },
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "electron": "^37.2.1"
+  }
+}

@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shooter X - Model Viewer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a14;
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+        }
+
+        #sidebar {
+            width: 280px;
+            background: #12121f;
+            border-right: 1px solid #2a2a40;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        #sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid #2a2a40;
+            text-align: center;
+        }
+        #sidebar-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #7c8aff;
+            letter-spacing: 2px;
+        }
+        #sidebar-header p {
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        #model-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        #model-list::-webkit-scrollbar { width: 6px; }
+        #model-list::-webkit-scrollbar-track { background: #12121f; }
+        #model-list::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+        .model-category {
+            margin-bottom: 8px;
+        }
+        .model-category-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #555;
+            padding: 8px 8px 4px;
+            font-weight: 600;
+        }
+        .model-btn {
+            width: 100%;
+            padding: 10px 12px;
+            background: #1a1a30;
+            border: 1px solid #2a2a40;
+            border-radius: 6px;
+            color: #ccc;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .model-btn:hover {
+            background: #22224a;
+            border-color: #4a4a70;
+        }
+        .model-btn.active {
+            background: #1e2a5a;
+            border-color: #4a5aaa;
+            color: #8c9aff;
+        }
+        .model-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        #bottom-panel {
+            border-top: 1px solid #2a2a40;
+            padding: 12px;
+        }
+
+        /* Right panel */
+        #right-panel {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: #12121f;
+            border-left: 1px solid #2a2a40;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .panel-section {
+            padding: 12px;
+            border-bottom: 1px solid #2a2a40;
+        }
+        .panel-section h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #555;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .control-row label {
+            font-size: 12px;
+            color: #999;
+        }
+        .control-row input[type="range"] {
+            width: 120px;
+            accent-color: #5a6aff;
+        }
+        .control-row input[type="color"] {
+            width: 32px;
+            height: 24px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background: none;
+            cursor: pointer;
+        }
+        .control-row input[type="checkbox"] {
+            accent-color: #5a6aff;
+        }
+        .control-row .value {
+            font-size: 11px;
+            color: #666;
+            min-width: 32px;
+            text-align: right;
+        }
+
+        .toggle-btn {
+            padding: 6px 12px;
+            background: #1a1a30;
+            border: 1px solid #2a2a40;
+            border-radius: 4px;
+            color: #999;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .toggle-btn:hover { background: #22224a; }
+        .toggle-btn.active {
+            background: #1e2a5a;
+            border-color: #4a5aaa;
+            color: #8c9aff;
+        }
+
+        /* Model info */
+        #model-info {
+            padding: 12px;
+            border-top: 1px solid #2a2a40;
+            flex-shrink: 0;
+        }
+        #model-info h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        #model-info-content {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.6;
+        }
+        #model-info-content .info-label {
+            color: #555;
+        }
+        #model-info-content .info-value {
+            color: #aaa;
+        }
+
+        /* Canvas */
+        #viewport {
+            flex: 1;
+            position: relative;
+        }
+        #viewport canvas {
+            display: block;
+        }
+
+        /* Camera mode indicator */
+        #camera-mode {
+            position: fixed;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(18, 18, 31, 0.9);
+            border: 1px solid #2a2a40;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 11px;
+            color: #7c8aff;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        /* Drop zone overlay */
+        #drop-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 10, 20, 0.92);
+            border: 3px dashed #4a5aaa;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            flex-direction: column;
+            gap: 12px;
+        }
+        #drop-overlay.visible { display: flex; }
+        #drop-overlay h2 { color: #7c8aff; font-size: 22px; }
+        #drop-overlay p { color: #666; font-size: 13px; }
+
+        /* FPS counter */
+        #fps {
+            position: fixed;
+            bottom: 12px;
+            left: 304px;
+            font-size: 11px;
+            color: #555;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        /* Scrollbar for right panel */
+        #right-panel::-webkit-scrollbar { width: 6px; }
+        #right-panel::-webkit-scrollbar-track { background: #12121f; }
+        #right-panel::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <!-- Left Sidebar: Model List -->
+    <div id="sidebar">
+        <div id="sidebar-header">
+            <h1>VIEWER</h1>
+            <p>Shooter X Asset Viewer</p>
+        </div>
+        <div id="model-list"></div>
+        <div id="model-info">
+            <h3>Model Info</h3>
+            <div id="model-info-content">Select a model to view details</div>
+        </div>
+    </div>
+
+    <!-- Viewport -->
+    <div id="viewport"></div>
+
+    <!-- Camera mode indicator -->
+    <div id="camera-mode">Orbit Mode &middot; Scroll to zoom &middot; Right-click to pan</div>
+
+    <!-- Right Panel: Lighting & Scene Controls -->
+    <div id="right-panel">
+        <div class="panel-section">
+            <h3>Directional Light</h3>
+            <div class="control-row">
+                <label>Intensity</label>
+                <input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="2.0">
+                <span class="value" id="dirIntensityVal">2.0</span>
+            </div>
+            <div class="control-row">
+                <label>Color</label>
+                <input type="color" id="dirColor" value="#ff8833">
+            </div>
+            <div class="control-row">
+                <label>Position X</label>
+                <input type="range" id="dirX" min="-100" max="100" step="1" value="70">
+                <span class="value" id="dirXVal">70</span>
+            </div>
+            <div class="control-row">
+                <label>Position Y</label>
+                <input type="range" id="dirY" min="0" max="200" step="1" value="150">
+                <span class="value" id="dirYVal">150</span>
+            </div>
+            <div class="control-row">
+                <label>Position Z</label>
+                <input type="range" id="dirZ" min="-100" max="100" step="1" value="30">
+                <span class="value" id="dirZVal">30</span>
+            </div>
+            <div class="control-row">
+                <label>Cast Shadows</label>
+                <input type="checkbox" id="dirShadows" checked>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h3>Ambient Light</h3>
+            <div class="control-row">
+                <label>Intensity</label>
+                <input type="range" id="ambIntensity" min="0" max="3" step="0.05" value="0.45">
+                <span class="value" id="ambIntensityVal">0.45</span>
+            </div>
+            <div class="control-row">
+                <label>Color</label>
+                <input type="color" id="ambColor" value="#99aacc">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h3>Hemisphere Light</h3>
+            <div class="control-row">
+                <label>Intensity</label>
+                <input type="range" id="hemIntensity" min="0" max="3" step="0.05" value="0.3">
+                <span class="value" id="hemIntensityVal">0.3</span>
+            </div>
+            <div class="control-row">
+                <label>Sky Color</label>
+                <input type="color" id="hemSkyColor" value="#88aaff">
+            </div>
+            <div class="control-row">
+                <label>Ground Color</label>
+                <input type="color" id="hemGroundColor" value="#445522">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h3>Scene</h3>
+            <div class="control-row">
+                <label>Background</label>
+                <input type="color" id="bgColor" value="#1a1a2e">
+            </div>
+            <div class="control-row">
+                <label>Fog</label>
+                <input type="checkbox" id="fogEnabled">
+            </div>
+            <div class="control-row">
+                <label>Fog Density</label>
+                <input type="range" id="fogDensity" min="0" max="0.05" step="0.001" value="0.005">
+                <span class="value" id="fogDensityVal">0.005</span>
+            </div>
+            <div class="control-row">
+                <label>Grid</label>
+                <input type="checkbox" id="gridEnabled" checked>
+            </div>
+            <div class="control-row">
+                <label>Axes</label>
+                <input type="checkbox" id="axesEnabled" checked>
+            </div>
+            <div class="control-row">
+                <label>Wireframe</label>
+                <input type="checkbox" id="wireframe">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h3>Camera</h3>
+            <div class="control-row" style="justify-content: flex-start; gap: 6px;">
+                <button class="toggle-btn active" id="btnOrbit" onclick="setCameraMode('orbit')">Orbit</button>
+                <button class="toggle-btn" id="btnFly" onclick="setCameraMode('fly')">Fly (WASD)</button>
+                <button class="toggle-btn" id="btnTop" onclick="setCameraMode('top')">Top</button>
+                <button class="toggle-btn" id="btnFront" onclick="setCameraMode('front')">Front</button>
+            </div>
+            <div class="control-row" style="margin-top: 8px;">
+                <label>FOV</label>
+                <input type="range" id="fov" min="20" max="120" step="1" value="60">
+                <span class="value" id="fovVal">60</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- FPS -->
+    <div id="fps">-- FPS</div>
+
+    <!-- Drop overlay -->
+    <div id="drop-overlay">
+        <h2>Drop .glb / .gltf file</h2>
+        <p>Release to load model</p>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../node_modules/three/build/three.module.js",
+            "three/addons/": "../node_modules/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+    // ── Scene Setup ──
+    const viewport = document.getElementById('viewport');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a2e);
+
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 500);
+    camera.position.set(5, 4, 8);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.4;
+    viewport.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.target.set(0, 1, 0);
+
+    // ── Lights ──
+    const dirLight = new THREE.DirectionalLight(0xff8833, 2.0);
+    dirLight.position.set(70, 150, 30);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(2048, 2048);
+    dirLight.shadow.camera.left = -50;
+    dirLight.shadow.camera.right = 50;
+    dirLight.shadow.camera.top = 50;
+    dirLight.shadow.camera.bottom = -50;
+    dirLight.shadow.camera.near = 0.5;
+    dirLight.shadow.camera.far = 300;
+    dirLight.shadow.bias = -0.001;
+    dirLight.shadow.normalBias = 0.005;
+    scene.add(dirLight);
+    scene.add(dirLight.target);
+
+    const ambLight = new THREE.AmbientLight(0x99aacc, 0.45);
+    scene.add(ambLight);
+
+    const hemiLight = new THREE.HemisphereLight(0x88aaff, 0x445522, 0.3);
+    scene.add(hemiLight);
+
+    // ── Helpers ──
+    const gridHelper = new THREE.GridHelper(40, 40, 0x333355, 0x222240);
+    scene.add(gridHelper);
+
+    const axesHelper = new THREE.AxesHelper(5);
+    scene.add(axesHelper);
+
+    // ── Ground ──
+    const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(100, 100),
+        new THREE.MeshStandardMaterial({ color: 0x2a3a2a, roughness: 0.95 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // ── Model Registry ──
+    const models = {};
+    let currentModel = null;
+    let currentModelName = '';
+
+    // ── Build Procedural Models ──
+
+    // Rifle / Weapon
+    function createRifleModel() {
+        const gunBody = new THREE.Group();
+        const mainMat = new THREE.MeshPhongMaterial({ color: 0x2c3138, shininess: 40 });
+        const accentMat = new THREE.MeshPhongMaterial({ color: 0x56606f, shininess: 70 });
+        const gripMat = new THREE.MeshPhongMaterial({ color: 0x111418, shininess: 12 });
+
+        const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.52), mainMat);
+        const handguard = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.1, 0.26), accentMat);
+        handguard.position.z = -0.32;
+        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.58, 10), gripMat);
+        barrel.rotation.x = Math.PI / 2;
+        barrel.position.z = -0.68;
+        const stock = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.14, 0.2), mainMat);
+        stock.position.z = 0.34;
+        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.2, 0.095), gripMat);
+        grip.position.set(0, -0.16, 0.06);
+        grip.rotation.x = -0.32;
+        gunBody.add(receiver, handguard, barrel, stock, grip);
+        gunBody.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+        gunBody.name = 'Rifle';
+        return gunBody;
+    }
+
+    // Player (simple capsule)
+    function createPlayerSimple() {
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(
+            new THREE.CapsuleGeometry(0.22, 0.95, 6, 12),
+            new THREE.MeshPhongMaterial({ color: 0x2957d1, shininess: 20 })
+        );
+        body.position.y = 0.2;
+        body.castShadow = true;
+        g.add(body);
+        g.name = 'Player (Simple)';
+        return g;
+    }
+
+    // Player (detailed)
+    function createPlayerDetailed() {
+        const g = new THREE.Group();
+        const armorMat = new THREE.MeshPhongMaterial({ color: 0x2f62ff, shininess: 45 });
+        const armorDarkMat = new THREE.MeshPhongMaterial({ color: 0x1b2f88, shininess: 25 });
+        const undersuitMat = new THREE.MeshPhongMaterial({ color: 0x101625, shininess: 12 });
+        const skinMat = new THREE.MeshPhongMaterial({ color: 0xf2c18d, shininess: 18 });
+
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.78, 0.34), armorMat);
+        torso.position.y = 0.18;
+        g.add(torso);
+
+        const chestPlate = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.48, 0.08), armorDarkMat);
+        chestPlate.position.set(0, 0.2, -0.18);
+        g.add(chestPlate);
+
+        const waist = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.16, 0.26), undersuitMat);
+        waist.position.set(0, -0.24, 0);
+        g.add(waist);
+
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 20, 20), skinMat);
+        head.position.y = 0.78;
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.1, 8), skinMat);
+        nose.rotation.x = -Math.PI / 2;
+        nose.position.set(0, -0.015, -0.22);
+        head.add(nose);
+        g.add(head);
+
+        const shoulderGeo = new THREE.SphereGeometry(0.13, 12, 10);
+        const armGeo = new THREE.CapsuleGeometry(0.09, 0.44, 5, 10);
+        const forearmGeo = new THREE.CapsuleGeometry(0.08, 0.28, 5, 10);
+        const legGeo = new THREE.CapsuleGeometry(0.12, 0.5, 5, 10);
+        const shinGeo = new THREE.CapsuleGeometry(0.11, 0.3, 5, 10);
+
+        function addArm(side) {
+            const pivot = new THREE.Group();
+            pivot.position.set(side * 0.39, 0.36, 0);
+            pivot.add(new THREE.Mesh(shoulderGeo, armorDarkMat));
+            const upper = new THREE.Mesh(armGeo, armorMat);
+            upper.position.y = -0.28;
+            pivot.add(upper);
+            const forearm = new THREE.Mesh(forearmGeo, armorDarkMat);
+            forearm.position.set(0, -0.66, -0.02);
+            pivot.add(forearm);
+            g.add(pivot);
+        }
+        addArm(-1);
+        addArm(1);
+
+        const leftLeg = new THREE.Mesh(legGeo, undersuitMat);
+        leftLeg.position.set(-0.16, -0.52, 0);
+        g.add(leftLeg);
+        const rightLeg = new THREE.Mesh(legGeo, undersuitMat);
+        rightLeg.position.set(0.16, -0.52, 0);
+        g.add(rightLeg);
+        const leftShin = new THREE.Mesh(shinGeo, armorDarkMat);
+        leftShin.position.set(-0.16, -0.96, 0.03);
+        g.add(leftShin);
+        const rightShin = new THREE.Mesh(shinGeo, armorDarkMat);
+        rightShin.position.set(0.16, -0.96, 0.03);
+        g.add(rightShin);
+
+        const weapon = createRifleModel();
+        weapon.scale.setScalar(1.0);
+        weapon.position.set(0.12, 0.2, -0.48);
+        weapon.rotation.set(0.02, 0, 0);
+        g.add(weapon);
+
+        g.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+        g.name = 'Player (Detailed)';
+        return g;
+    }
+
+    // Enemy types
+    const enemyDefs = {
+        'GRUNT':     { color: 0xff0000, radius: 0.24, height: 1.7, emissive: 0x000000 },
+        'SCOUT':     { color: 0x00ff00, radius: 0.21, height: 1.5, emissive: 0x000000 },
+        'HEAVY':     { color: 0x0000ff, radius: 0.42, height: 2.0, emissive: 0x000000 },
+        'SNIPER':    { color: 0xffff00, radius: 0.22, height: 1.6, emissive: 0x000000 },
+        'COMMANDER': { color: 0xff00ff, radius: 0.31, height: 1.9, emissive: 0x000000 },
+        'BOSS':      { color: 0xFF9800, radius: 0.52, height: 2.8, emissive: 0x600000 }
+    };
+
+    function createEnemy(type) {
+        const def = enemyDefs[type];
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(
+            new THREE.CylinderGeometry(def.radius, def.radius, def.height, 8),
+            new THREE.MeshPhongMaterial({ color: def.color, emissive: def.emissive, shininess: 50 })
+        );
+        body.position.y = def.height / 2;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        g.add(body);
+
+        // Add a head sphere
+        const head = new THREE.Mesh(
+            new THREE.SphereGeometry(def.radius * 0.8, 12, 10),
+            new THREE.MeshPhongMaterial({ color: def.color, emissive: def.emissive, shininess: 50 })
+        );
+        head.position.y = def.height + def.radius * 0.5;
+        head.castShadow = true;
+        g.add(head);
+
+        g.name = `Enemy (${type})`;
+        return g;
+    }
+
+    // Tree
+    function createTree() {
+        const g = new THREE.Group();
+        const trunkMat = new THREE.MeshLambertMaterial({ color: 0x55341A });
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 3, 6), trunkMat);
+        trunk.position.y = 1.5;
+        trunk.castShadow = true;
+        trunk.receiveShadow = true;
+        g.add(trunk);
+
+        const foliageColors = [0x1B4721, 0x2D5A27, 0x3A6B35];
+        for (let i = 0; i < 3; i++) {
+            const h = 2.2 - i * 0.4;
+            const r = 1.0 - i * 0.15;
+            const foliage = new THREE.Mesh(
+                new THREE.ConeGeometry(r, h, 6),
+                new THREE.MeshLambertMaterial({ color: foliageColors[i], flatShading: true })
+            );
+            foliage.position.y = 3.0 + i * 0.7;
+            foliage.castShadow = true;
+            foliage.receiveShadow = true;
+            g.add(foliage);
+        }
+        for (let i = 0; i < 2; i++) {
+            const detail = new THREE.Mesh(
+                new THREE.ConeGeometry(0.6, 1.2, 5),
+                new THREE.MeshLambertMaterial({ color: foliageColors[i % 3], flatShading: true })
+            );
+            const angle = i * Math.PI;
+            detail.position.set(Math.cos(angle) * 0.7, 3.8, Math.sin(angle) * 0.7);
+            detail.castShadow = true;
+            g.add(detail);
+        }
+
+        g.name = 'Tree';
+        return g;
+    }
+
+    // Rock
+    function createRock() {
+        const g = new THREE.Group();
+        const geo = new THREE.IcosahedronGeometry(0.7, 1);
+        const pos = geo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const deform = 0.15;
+            const factor = 0.5 + Math.random() * 0.5;
+            pos.setX(i, pos.getX(i) + (Math.random() - 0.5) * deform * factor);
+            pos.setY(i, pos.getY(i) + (Math.random() - 0.5) * deform * factor);
+            pos.setZ(i, pos.getZ(i) + (Math.random() - 0.5) * deform * factor);
+        }
+        geo.computeVertexNormals();
+        const rock = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 0.8 }));
+        rock.position.y = 0.4;
+        rock.scale.set(1.1, 0.7, 1.0);
+        rock.castShadow = true;
+        rock.receiveShadow = true;
+        g.add(rock);
+        g.name = 'Rock';
+        return g;
+    }
+
+    // PowerUps
+    function createPowerUp(type) {
+        const colors = {
+            health: { color: 0xff4444, emissive: 0x440000 },
+            ammo: { color: 0x44ff44, emissive: 0x114400 },
+            rapidfire: { color: 0x00bbff, emissive: 0x003366 }
+        };
+        const c = colors[type];
+        const mesh = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 16, 16),
+            new THREE.MeshPhongMaterial({ color: c.color, emissive: c.emissive })
+        );
+        mesh.castShadow = true;
+        const g = new THREE.Group();
+        g.add(mesh);
+        g.name = `PowerUp (${type})`;
+        return g;
+    }
+
+    // Fallen Log
+    function createFallenLog() {
+        const g = new THREE.Group();
+        const log = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.2, 0.3, 4, 8),
+            new THREE.MeshLambertMaterial({ color: 0x55341A })
+        );
+        log.rotation.z = Math.PI / 2;
+        log.position.y = 0.3;
+        log.castShadow = true;
+        log.receiveShadow = true;
+        g.add(log);
+        g.name = 'Fallen Log';
+        return g;
+    }
+
+    // Fence
+    function createFence() {
+        const g = new THREE.Group();
+        const mat = new THREE.MeshLambertMaterial({ color: 0x6b4226 });
+        for (let i = 0; i < 4; i++) {
+            const post = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 0.1), mat);
+            post.position.set(i * 1.5 - 2.25, 0.6, 0);
+            post.castShadow = true;
+            g.add(post);
+        }
+        for (let h = 0; h < 2; h++) {
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.06, 0.06), mat);
+            rail.position.set(0, 0.4 + h * 0.5, 0);
+            rail.castShadow = true;
+            g.add(rail);
+        }
+        g.name = 'Fence';
+        return g;
+    }
+
+    // Cloud
+    function createCloud() {
+        const g = new THREE.Group();
+        const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.85 });
+        const puffs = [
+            { pos: [0, 0, 0], scale: [2.5, 1.2, 1.8] },
+            { pos: [-1.5, 0.2, 0.3], scale: [1.8, 0.9, 1.4] },
+            { pos: [1.6, 0.1, -0.2], scale: [2.0, 1.0, 1.5] },
+            { pos: [0.3, 0.4, 0.5], scale: [1.5, 0.8, 1.2] }
+        ];
+        for (const p of puffs) {
+            const sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 10), mat);
+            sphere.position.set(...p.pos);
+            sphere.scale.set(...p.scale);
+            g.add(sphere);
+        }
+        g.position.y = 20;
+        g.name = 'Cloud';
+        return g;
+    }
+
+    // Moon
+    function createMoon() {
+        const g = new THREE.Group();
+        const moonSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(3, 32, 32),
+            new THREE.MeshBasicMaterial({ color: 0xddddcc })
+        );
+        g.add(moonSphere);
+
+        const glowMat = new THREE.SpriteMaterial({
+            color: 0xaabbaa,
+            transparent: true,
+            opacity: 0.25,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const glow = new THREE.Sprite(glowMat);
+        glow.scale.set(8, 8, 1);
+        g.add(glow);
+        g.name = 'Moon';
+        return g;
+    }
+
+    // Sun
+    function createSun() {
+        const g = new THREE.Group();
+        const sunSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(4, 32, 32),
+            new THREE.MeshBasicMaterial({ color: 0xffdd44 })
+        );
+        g.add(sunSphere);
+
+        const glowMat = new THREE.SpriteMaterial({
+            color: 0xffaa22,
+            transparent: true,
+            opacity: 0.35,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const glow = new THREE.Sprite(glowMat);
+        glow.scale.set(14, 14, 1);
+        g.add(glow);
+        g.name = 'Sun';
+        return g;
+    }
+
+    // ── Register All Models ──
+    const categories = [
+        {
+            title: 'Player',
+            items: [
+                { name: 'Player (Simple)', create: createPlayerSimple, color: '#2957d1' },
+                { name: 'Player (Detailed)', create: createPlayerDetailed, color: '#2f62ff' },
+            ]
+        },
+        {
+            title: 'Weapon',
+            items: [
+                { name: 'Rifle', create: createRifleModel, color: '#56606f' },
+            ]
+        },
+        {
+            title: 'Enemies',
+            items: Object.keys(enemyDefs).map(t => ({
+                name: `Enemy (${t})`,
+                create: () => createEnemy(t),
+                color: '#' + enemyDefs[t].color.toString(16).padStart(6, '0')
+            }))
+        },
+        {
+            title: 'Environment',
+            items: [
+                { name: 'Tree', create: createTree, color: '#2D5A27' },
+                { name: 'Rock', create: createRock, color: '#808080' },
+                { name: 'Fallen Log', create: createFallenLog, color: '#55341A' },
+                { name: 'Fence', create: createFence, color: '#6b4226' },
+                { name: 'Cloud', create: createCloud, color: '#ffffff' },
+            ]
+        },
+        {
+            title: 'Celestial',
+            items: [
+                { name: 'Sun', create: createSun, color: '#ffdd44' },
+                { name: 'Moon', create: createMoon, color: '#ddddcc' },
+            ]
+        },
+        {
+            title: 'PowerUps',
+            items: [
+                { name: 'PowerUp (Health)', create: () => createPowerUp('health'), color: '#ff4444' },
+                { name: 'PowerUp (Ammo)', create: () => createPowerUp('ammo'), color: '#44ff44' },
+                { name: 'PowerUp (Rapid Fire)', create: () => createPowerUp('rapidfire'), color: '#00bbff' },
+            ]
+        }
+    ];
+
+    // Build sidebar
+    const modelListEl = document.getElementById('model-list');
+    for (const cat of categories) {
+        const catDiv = document.createElement('div');
+        catDiv.className = 'model-category';
+        catDiv.innerHTML = `<div class="model-category-title">${cat.title}</div>`;
+        for (const item of cat.items) {
+            const btn = document.createElement('button');
+            btn.className = 'model-btn';
+            btn.innerHTML = `<span class="model-dot" style="background:${item.color}"></span>${item.name}`;
+            btn.onclick = () => selectModel(item.name, item.create);
+            btn.dataset.name = item.name;
+            catDiv.appendChild(btn);
+        }
+        modelListEl.appendChild(catDiv);
+    }
+
+    // ── Model Selection ──
+    function selectModel(name, createFn) {
+        if (currentModel) {
+            scene.remove(currentModel);
+            disposeModel(currentModel);
+        }
+        currentModel = createFn();
+        scene.add(currentModel);
+        currentModelName = name;
+
+        // Update active button
+        document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.querySelector(`.model-btn[data-name="${name}"]`);
+        if (btn) btn.classList.add('active');
+
+        // Camera focus
+        const box = new THREE.Box3().setFromObject(currentModel);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const fov = camera.fov * (Math.PI / 180);
+        const dist = maxDim / (2 * Math.tan(fov / 2)) * 1.5;
+
+        controls.target.copy(center);
+        camera.position.set(center.x + dist * 0.7, center.y + dist * 0.5, center.z + dist * 0.7);
+        controls.update();
+
+        updateModelInfo(name, currentModel);
+    }
+
+    function disposeModel(obj) {
+        obj.traverse(child => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                else child.material.dispose();
+            }
+        });
+    }
+
+    function updateModelInfo(name, obj) {
+        let tris = 0, verts = 0, meshCount = 0;
+        obj.traverse(c => {
+            if (c.isMesh) {
+                meshCount++;
+                const geo = c.geometry;
+                verts += geo.attributes.position ? geo.attributes.position.count : 0;
+                if (geo.index) tris += geo.index.count / 3;
+                else tris += geo.attributes.position ? geo.attributes.position.count / 3 : 0;
+            }
+        });
+        document.getElementById('model-info-content').innerHTML = `
+            <span class="info-label">Name: </span><span class="info-value">${name}</span><br>
+            <span class="info-label">Meshes: </span><span class="info-value">${meshCount}</span><br>
+            <span class="info-label">Vertices: </span><span class="info-value">${verts.toLocaleString()}</span><br>
+            <span class="info-label">Triangles: </span><span class="info-value">${Math.round(tris).toLocaleString()}</span>
+        `;
+    }
+
+    // ── Lighting Controls ──
+    function bindSlider(id, valId, callback) {
+        const el = document.getElementById(id);
+        const valEl = document.getElementById(valId);
+        el.addEventListener('input', () => {
+            valEl.textContent = el.value;
+            callback(parseFloat(el.value));
+        });
+    }
+    function bindColor(id, callback) {
+        document.getElementById(id).addEventListener('input', e => callback(e.target.value));
+    }
+    function bindCheckbox(id, callback) {
+        document.getElementById(id).addEventListener('change', e => callback(e.target.checked));
+    }
+
+    bindSlider('dirIntensity', 'dirIntensityVal', v => dirLight.intensity = v);
+    bindColor('dirColor', v => dirLight.color.set(v));
+    bindSlider('dirX', 'dirXVal', v => dirLight.position.x = v);
+    bindSlider('dirY', 'dirYVal', v => dirLight.position.y = v);
+    bindSlider('dirZ', 'dirZVal', v => dirLight.position.z = v);
+    bindCheckbox('dirShadows', v => dirLight.castShadow = v);
+
+    bindSlider('ambIntensity', 'ambIntensityVal', v => ambLight.intensity = v);
+    bindColor('ambColor', v => ambLight.color.set(v));
+
+    bindSlider('hemIntensity', 'hemIntensityVal', v => hemiLight.intensity = v);
+    bindColor('hemSkyColor', v => hemiLight.color.set(v));
+    bindColor('hemGroundColor', v => hemiLight.groundColor.set(v));
+
+    bindColor('bgColor', v => scene.background.set(v));
+    bindCheckbox('fogEnabled', v => {
+        if (v) scene.fog = new THREE.FogExp2(scene.background.getHex(), parseFloat(document.getElementById('fogDensity').value));
+        else scene.fog = null;
+    });
+    bindSlider('fogDensity', 'fogDensityVal', v => {
+        if (scene.fog) scene.fog.density = v;
+    });
+    bindCheckbox('gridEnabled', v => gridHelper.visible = v);
+    bindCheckbox('axesEnabled', v => axesHelper.visible = v);
+    bindCheckbox('wireframe', v => {
+        if (!currentModel) return;
+        currentModel.traverse(c => {
+            if (c.isMesh && c.material) {
+                if (Array.isArray(c.material)) c.material.forEach(m => m.wireframe = v);
+                else c.material.wireframe = v;
+            }
+        });
+    });
+    bindSlider('fov', 'fovVal', v => {
+        camera.fov = v;
+        camera.updateProjectionMatrix();
+    });
+
+    // ── Camera Modes ──
+    window.setCameraMode = function(mode) {
+        document.querySelectorAll('#right-panel .panel-section:last-child .toggle-btn').forEach(b => b.classList.remove('active'));
+        const indicator = document.getElementById('camera-mode');
+
+        if (mode === 'orbit') {
+            controls.enabled = true;
+            controls.enableRotate = true;
+            controls.enablePan = true;
+            document.getElementById('btnOrbit').classList.add('active');
+            indicator.textContent = 'Orbit Mode \u00b7 Scroll to zoom \u00b7 Right-click to pan';
+        } else if (mode === 'fly') {
+            controls.enabled = false;
+            document.getElementById('btnFly').classList.add('active');
+            indicator.textContent = 'Fly Mode \u00b7 WASD + Mouse \u00b7 Click to capture';
+        } else if (mode === 'top') {
+            controls.enabled = true;
+            camera.position.set(0, 20, 0.01);
+            controls.target.set(0, 0, 0);
+            controls.update();
+            document.getElementById('btnTop').classList.add('active');
+            indicator.textContent = 'Top View';
+        } else if (mode === 'front') {
+            controls.enabled = true;
+            camera.position.set(0, 2, 10);
+            controls.target.set(0, 1, 0);
+            controls.update();
+            document.getElementById('btnFront').classList.add('active');
+            indicator.textContent = 'Front View';
+        }
+        currentCameraMode = mode;
+    };
+
+    let currentCameraMode = 'orbit';
+
+    // ── Fly Camera ──
+    const keys = {};
+    document.addEventListener('keydown', e => keys[e.code] = true);
+    document.addEventListener('keyup', e => keys[e.code] = false);
+
+    let flyYaw = 0, flyPitch = 0;
+    let isPointerLocked = false;
+
+    renderer.domElement.addEventListener('click', () => {
+        if (currentCameraMode === 'fly') {
+            renderer.domElement.requestPointerLock();
+        }
+    });
+    document.addEventListener('pointerlockchange', () => {
+        isPointerLocked = document.pointerLockElement === renderer.domElement;
+    });
+    document.addEventListener('mousemove', e => {
+        if (!isPointerLocked || currentCameraMode !== 'fly') return;
+        flyYaw -= e.movementX * 0.002;
+        flyPitch -= e.movementY * 0.002;
+        flyPitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, flyPitch));
+    });
+
+    function updateFlyCamera(dt) {
+        if (currentCameraMode !== 'fly') return;
+        const speed = 10 * dt;
+        const dir = new THREE.Vector3();
+        camera.getWorldDirection(dir);
+        const right = new THREE.Vector3().crossVectors(dir, camera.up).normalize();
+
+        if (keys['KeyW']) camera.position.addScaledVector(dir, speed);
+        if (keys['KeyS']) camera.position.addScaledVector(dir, -speed);
+        if (keys['KeyA']) camera.position.addScaledVector(right, -speed);
+        if (keys['KeyD']) camera.position.addScaledVector(right, speed);
+        if (keys['Space']) camera.position.y += speed;
+        if (keys['ShiftLeft']) camera.position.y -= speed;
+
+        const euler = new THREE.Euler(flyPitch, flyYaw, 0, 'YXZ');
+        camera.quaternion.setFromEuler(euler);
+    }
+
+    // ── Drag & Drop GLB/GLTF ──
+    const dropOverlay = document.getElementById('drop-overlay');
+    document.addEventListener('dragover', e => { e.preventDefault(); dropOverlay.classList.add('visible'); });
+    document.addEventListener('dragleave', e => { if (e.relatedTarget === null) dropOverlay.classList.remove('visible'); });
+    document.addEventListener('drop', e => {
+        e.preventDefault();
+        dropOverlay.classList.remove('visible');
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext !== 'glb' && ext !== 'gltf') return;
+
+        const url = URL.createObjectURL(file);
+        const loader = new GLTFLoader();
+        loader.load(url, gltf => {
+            if (currentModel) { scene.remove(currentModel); disposeModel(currentModel); }
+            currentModel = gltf.scene;
+            currentModel.traverse(c => {
+                if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; }
+            });
+            scene.add(currentModel);
+            currentModelName = file.name;
+
+            const box = new THREE.Box3().setFromObject(currentModel);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            const dist = maxDim / (2 * Math.tan(fov / 2)) * 1.5;
+            controls.target.copy(center);
+            camera.position.set(center.x + dist * 0.7, center.y + dist * 0.5, center.z + dist * 0.7);
+            controls.update();
+
+            updateModelInfo(file.name, currentModel);
+            URL.revokeObjectURL(url);
+
+            document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
+        }, undefined, err => {
+            console.error('Failed to load model:', err);
+            URL.revokeObjectURL(url);
+        });
+    });
+
+    // ── Animation Loop ──
+    let lastTime = performance.now();
+    let frameCount = 0, fpsTime = 0;
+
+    function animate(now) {
+        requestAnimationFrame(animate);
+        const dt = Math.min((now - lastTime) / 1000, 0.1);
+        lastTime = now;
+
+        updateFlyCamera(dt);
+        if (currentCameraMode === 'orbit') controls.update();
+
+        // Animate powerups
+        if (currentModel && currentModelName.startsWith('PowerUp')) {
+            currentModel.children[0].rotation.y += 2 * dt;
+        }
+
+        renderer.render(scene, camera);
+
+        // FPS
+        frameCount++;
+        fpsTime += dt;
+        if (fpsTime >= 0.5) {
+            document.getElementById('fps').textContent = Math.round(frameCount / fpsTime) + ' FPS';
+            frameCount = 0;
+            fpsTime = 0;
+        }
+    }
+
+    // ── Resize ──
+    function resize() {
+        const w = window.innerWidth - 280 - 280;
+        const h = window.innerHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Start
+    animate(performance.now());
+
+    // Auto-select first model
+    selectModel('Player (Detailed)', createPlayerDetailed);
+
+    </script>
+</body>
+</html>
