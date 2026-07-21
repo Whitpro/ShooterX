@@ -1,4 +1,5 @@
 import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
+import CloudSystem from './cloudsystem.js';
 import PowerUp from './powerup.js';
 
 
@@ -172,6 +173,12 @@ class Environment {
         this._tempProjection = new THREE.Vector3();
         this._tempGrassQuaternion = new THREE.Quaternion();
 
+        this.sunObjects = [];
+        this.sunLight = null;
+        this.rimLight = null;
+        this.skyDome = null;
+        this.cloudSystem = null;
+
         // Create the world first
         this.createWorld();
         
@@ -335,29 +342,49 @@ class Environment {
         }
         this.barrierLights = [];
 
-        // Specifically find and remove cloud objects
-        const cloudsToRemove = [];
-        this.scene.traverse(object => {
-            if (object.userData && (object.userData.type === 'cloud' || object.userData.type === 'cloud-part')) {
-                cloudsToRemove.push(object);
-            }
-        });
-        
-        if (cloudsToRemove.length > 0) {
-            console.log(`Environment reset: specifically removing ${cloudsToRemove.length} cloud objects`);
-            cloudsToRemove.forEach(cloud => {
-                this.scene.remove(cloud);
-                // Dispose of cloud geometries and materials
-                if (cloud.geometry) cloud.geometry.dispose();
-                if (cloud.material) {
-                    if (Array.isArray(cloud.material)) {
-                        cloud.material.forEach(material => material.dispose());
-                    } else {
-                        cloud.material.dispose();
-                    }
+        // Clean up sun and godrays
+        if (this.sunObjects && this.sunObjects.length > 0) {
+            this.sunObjects.forEach(obj => {
+                this.scene.remove(obj);
+                if (obj.material) {
+                    if (obj.material.map) obj.material.map.dispose();
+                    obj.material.dispose();
                 }
+                if (obj.geometry) obj.geometry.dispose();
                 totalObjectsRemoved++;
             });
+        }
+        this.sunObjects = [];
+
+        // Clean up sky dome
+        if (this.skyDome) {
+            this.scene.remove(this.skyDome);
+            if (this.skyDome.material) {
+                if (this.skyDome.material.map) this.skyDome.material.map.dispose();
+                this.skyDome.material.dispose();
+            }
+            if (this.skyDome.geometry) this.skyDome.geometry.dispose();
+            totalObjectsRemoved++;
+            this.skyDome = null;
+        }
+        // Restore flat background as fallback
+        this.scene.background = new THREE.Color(0x5c7aaa);
+
+        // Clean up extra lights stored by reference
+        if (this.sunLight) {
+            if (this.sunLight.target) this.scene.remove(this.sunLight.target);
+            this.scene.remove(this.sunLight);
+            this.sunLight = null;
+        }
+        if (this.rimLight) {
+            this.scene.remove(this.rimLight);
+            this.rimLight = null;
+        }
+
+        // Clean up cloud system
+        if (this.cloudSystem) {
+            this.cloudSystem.dispose();
+            this.cloudSystem = null;
         }
 
         // Clean up power-ups
@@ -431,13 +458,12 @@ class Environment {
     }
 
     createWorld() {
-        // Create a darker sky background
-        this.scene.background = new THREE.Color(0x5c7aaa); // Deeper blue sky
+        // Sky dome replaces the flat background
+        this.createSkyDome();
         
-        // Add fog for distance fading and atmosphere
-        this.scene.fog = new THREE.FogExp2(0x5c7aaa, 0.0035); // Slightly denser fog for atmosphere
+        // Fog blended to match the horizon color of the sky dome
+        this.scene.fog = new THREE.FogExp2(0x8a9aaa, 0.0035);
 
-        // Create ground first
         this.createGround();
         
         // Add strategic cover points
@@ -452,11 +478,48 @@ class Environment {
         // Setup lighting
         this.setupLighting();
 
-        // Add clouds
-        this.addClouds();
+        // Moving clouds with shadows
+        this.cloudSystem = new CloudSystem(this.scene);
+        this.cloudSystem.generate(15);
 
         // Add map boundaries
         this.createMapBoundaries();
+    }
+
+    createSkyDome() {
+        // Build a vertical gradient texture for the sky
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 0, 256);
+        grad.addColorStop(0,   '#0f1f3f');  // deep navy at zenith
+        grad.addColorStop(0.3, '#2a4a7a');  // mid blue
+        grad.addColorStop(0.6, '#5a8aaa');  // lighter blue
+        grad.addColorStop(0.8, '#8a9aaa');  // hazy horizon
+        grad.addColorStop(1,   '#9a8a7a');  // warm haze at the horizon line
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 1, 256);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.magFilter = THREE.LinearFilter;
+        texture.minFilter = THREE.LinearFilter;
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+
+        // Large sphere rendered from the inside
+        const geo = new THREE.SphereGeometry(180, 32, 32);
+        const mat = new THREE.MeshBasicMaterial({
+            map: texture,
+            side: THREE.BackSide,
+            depthWrite: false,
+        });
+        const dome = new THREE.Mesh(geo, mat);
+        dome.position.set(0, 0, 0);
+        this.scene.add(dome);
+        this.skyDome = dome;
+
+        // Remove the old flat background so the dome is visible
+        this.scene.background = null;
     }
 
     createGround() {
@@ -817,49 +880,129 @@ class Environment {
         return (Math.abs(x) < pathWidth || Math.abs(z) < pathWidth);
     }
 
-        setupLighting() {
-        // More realistic, darker lighting setup
-        
-        // 1. Add ambient light with reduced intensity for a darker atmosphere
+    setupLighting() {
+        // Brighter lighting with visible sun and godrays
+
+        // 1. Ambient light — lowered for stronger shadow contrast
         const ambientLight = new THREE.AmbientLight(0x404060, 0.45);
         this.scene.add(ambientLight);
 
-        // 2. Add directional light (sun) with more realistic settings
-        const sunLight = new THREE.DirectionalLight(0xffeebb, 0.9);
-        sunLight.position.set(50, 100, 50);
+        // 2. Directional light (sun) — main light
+        const sunPosition = new THREE.Vector3(50, 100, 50);
+        const sunLight = new THREE.DirectionalLight(0xffeebb, 1.8);
+        sunLight.position.copy(sunPosition);
         sunLight.castShadow = true;
-        
-        // Improve shadow quality
-        if (this.isUsingWebGPU) {
-            sunLight.shadow.mapSize.width = 1024;
-            sunLight.shadow.mapSize.height = 1024;
-            // Improve shadow precision
-            sunLight.shadow.bias = -0.0001;
-        } else {
-            sunLight.shadow.mapSize.width = 512;
-            sunLight.shadow.mapSize.height = 512;
-        }
-        
-        // Optimize shadow camera frustum
-        sunLight.shadow.camera.near = 1;
-        sunLight.shadow.camera.far = 300;
-        sunLight.shadow.camera.left = -80;
-        sunLight.shadow.camera.right = 80;
-        sunLight.shadow.camera.top = 80;
-        sunLight.shadow.camera.bottom = -80;
-        
-        this.scene.add(sunLight);
 
-        // 3. Add hemisphere light with more natural sky/ground colors
-        const hemiLight = new THREE.HemisphereLight(0x7088c0, 0x3a2a20, 0.55);
+        // Higher-res shadow map for crisp shadows
+        const shadowSize = this.isUsingWebGPU ? 2048 : 1024;
+        sunLight.shadow.mapSize.width = shadowSize;
+        sunLight.shadow.mapSize.height = shadowSize;
+        sunLight.shadow.bias = -0.001;
+        sunLight.shadow.normalBias = 0.005;
+
+        // Shadow frustum follows the player each frame
+        sunLight.shadow.camera.near = 1;
+        sunLight.shadow.camera.far = 150;
+        const frustumSize = 50;
+        sunLight.shadow.camera.left = -frustumSize;
+        sunLight.shadow.camera.right = frustumSize;
+        sunLight.shadow.camera.top = frustumSize;
+        sunLight.shadow.camera.bottom = -frustumSize;
+
+        this.scene.add(sunLight);
+        this.sunLight = sunLight;
+
+        // 3. Hemisphere light
+        const hemiLight = new THREE.HemisphereLight(0x7088c0, 0x3a2a20, 0.85);
         hemiLight.position.set(0, 50, 0);
         this.scene.add(hemiLight);
 
-        // 4. Add a subtle fill light to prevent areas from being too dark
-        const fillLight = new THREE.PointLight(0xd0d0c0, 0.35, 80);
+        // 4. Fill light
+        const fillLight = new THREE.PointLight(0xd0d0c0, 0.6, 80);
         fillLight.position.set(0, 15, 0);
-        fillLight.castShadow = false;
         this.scene.add(fillLight);
+
+        // 5. Rim backlight — cool edge highlight from opposite side
+        const rimLight = new THREE.DirectionalLight(0x8899cc, 0.35);
+        rimLight.position.set(-40, 60, -40);
+        rimLight.castShadow = false;
+        this.scene.add(rimLight);
+        this.rimLight = rimLight;
+
+        // 6. Visible sun and godrays
+        this.createSun(sunPosition);
+    }
+
+    createSun(position) {
+        // Helper: make a radial-gradient canvas texture clipped to a circle
+        const makeGlowTexture = (stops, size = 256) => {
+            const c = document.createElement('canvas');
+            c.width = size;
+            c.height = size;
+            const ctx = c.getContext('2d');
+            const half = size / 2;
+            // Clip to circle so canvas corners are pure transparent
+            ctx.beginPath();
+            ctx.arc(half, half, half, 0, Math.PI * 2);
+            ctx.clip();
+            const g = ctx.createRadialGradient(half, half, 0, half, half, half);
+            stops.forEach(([offset, color]) => g.addColorStop(offset, color));
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, size, size);
+            return new THREE.CanvasTexture(c);
+        };
+
+        // Create a billboarded circle mesh (true circular geometry, not a quad)
+        const makeGlowDisc = (texture, worldSize) => {
+            const geo = new THREE.CircleGeometry(1, 24);
+            const mat = new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                side: THREE.DoubleSide,
+                alphaTest: 0.01,
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(position);
+            mesh.scale.set(worldSize, worldSize, 1);
+            // Always face the camera (billboard behavior)
+            mesh.onBeforeRender = (renderer, scene, camera) => {
+                mesh.quaternion.copy(camera.quaternion);
+            };
+            return mesh;
+        };
+
+        // 1. Hot sun core sphere
+        const sunGeo = new THREE.SphereGeometry(3, 16, 16);
+        const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd44 });
+        const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+        sunMesh.position.copy(position);
+        this.scene.add(sunMesh);
+        this.sunObjects.push(sunMesh);
+
+        // 2. Core glow — tight bright burst
+        const coreTex = makeGlowTexture([
+            [0,   'rgba(255, 235, 180, 1)'],
+            [0.12, 'rgba(255, 215, 105, 0.8)'],
+            [0.35, 'rgba(255, 185,  55, 0.25)'],
+            [0.6, 'rgba(255, 155,  35, 0.05)'],
+            [1,   'rgba(255, 130,  10, 0)']
+        ]);
+        const coreDisc = makeGlowDisc(coreTex, 60);
+        this.scene.add(coreDisc);
+        this.sunObjects.push(coreDisc);
+
+        // 3. Mid glow — warm halo
+        const midTex = makeGlowTexture([
+            [0,   'rgba(255, 210, 130, 0.55)'],
+            [0.18, 'rgba(255, 185,  85, 0.22)'],
+            [0.4, 'rgba(255, 160,  55, 0.06)'],
+            [1,   'rgba(255, 140,  35, 0)']
+        ], 256);
+        const midDisc = makeGlowDisc(midTex, 100);
+        this.scene.add(midDisc);
+        this.sunObjects.push(midDisc);
     }
 
     createPointLight(x, y, z, color, distance, intensity) {
@@ -871,67 +1014,7 @@ class Environment {
     }
 
     addClouds() {
-        debug('Adding clouds to scene');
-        
-        // Cloud settings based on renderer capabilities
-        let segments, cloudCount;
-        
-        if (this.isUsingWebGPU) {
-            // WebGPU can handle more detailed clouds
-            segments = 12;
-            cloudCount = 10;
-        } else {
-            // WebGL defaults
-            segments = 8;
-            cloudCount = 15;
-        }
-        
-        // Create darker, more atmospheric clouds
-        const cloudGeometry = new THREE.SphereGeometry(10, segments, segments);
-        const cloudMaterial = new THREE.MeshPhongMaterial({
-            color: 0xdddddd, // Slightly darker clouds
-            transparent: true,
-            opacity: 0.7,    // More transparent for atmospheric effect
-            fog: true        // Make clouds affected by fog
-        });
-
-        // Create clouds based on detected capabilities
-        for (let i = 0; i < cloudCount; i++) {
-            const cloudCluster = new THREE.Group();
-            // Tag the cloud cluster for proper cleanup
-            cloudCluster.userData.isEnvironment = true;
-            cloudCluster.userData.type = 'cloud';
-            
-            const numSpheres = 3 + Math.floor(Math.random() * 3);
-            for (let j = 0; j < numSpheres; j++) {
-                const cloudPart = new THREE.Mesh(cloudGeometry, cloudMaterial);
-                cloudPart.position.set(
-                    (Math.random() - 0.5) * 15,
-                    (Math.random() - 0.5) * 3,
-                    (Math.random() - 0.5) * 15
-                );
-                cloudPart.scale.set(
-                    0.5 + Math.random(),
-                    0.3 + Math.random() * 0.2,
-                    0.5 + Math.random()
-                );
-                // Tag each cloud part for proper cleanup
-                cloudPart.userData.isEnvironment = true;
-                cloudPart.userData.type = 'cloud-part';
-                cloudCluster.add(cloudPart);
-            }
-
-            // Position clouds higher and more spread out
-            cloudCluster.position.set(
-                (Math.random() - 0.5) * 200,
-                70 + Math.random() * 40, // Higher clouds
-                (Math.random() - 0.5) * 200
-            );
-            
-            this.scene.add(cloudCluster);
-        }
-        
-        debug(`Added ${cloudCount} cloud clusters to scene`);
+        // Replaced by CloudSystem — kept as empty hook for compatibility
     }
 
     createMapBoundaries() {
@@ -1136,7 +1219,15 @@ class Environment {
     }
 
     updateAnimatedBarrierWall(deltaTime, playerPosition = null) {
-        // Realistic perimeter fence is static, no animated barrier update needed.
+        // Drift clouds
+        if (this.cloudSystem) {
+            this.cloudSystem.update(deltaTime);
+        }
+        // Move the shadow map frustum to follow the player
+        if (playerPosition && this.sunLight) {
+            this.sunLight.target.position.set(playerPosition.x, 0, playerPosition.z);
+            this.sunLight.target.updateMatrixWorld();
+        }
     }
 
     updateBarrierLights(deltaTime, intensityFactor = 1.0) {
