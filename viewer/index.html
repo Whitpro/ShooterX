@@ -277,7 +277,7 @@
     <div id="viewport"></div>
 
     <!-- Camera mode indicator -->
-    <div id="camera-mode">Orbit Mode &middot; Scroll to zoom &middot; Right-click to pan</div>
+    <div id="camera-mode">Orbit Mode &middot; G Move &middot; R Rotate &middot; S Scale</div>
 
     <!-- Right Panel: Lighting & Scene Controls -->
     <div id="right-panel">
@@ -373,6 +373,24 @@
         </div>
 
         <div class="panel-section">
+            <h3>Transform</h3>
+            <div class="control-row" style="justify-content: flex-start; gap: 6px;">
+                <button class="toggle-btn active" id="btnTranslate" onclick="setTransformMode('translate')">Move</button>
+                <button class="toggle-btn" id="btnRotate" onclick="setTransformMode('rotate')">Rotate</button>
+                <button class="toggle-btn" id="btnScale" onclick="setTransformMode('scale')">Scale</button>
+            </div>
+            <div id="transform-info" style="margin-top: 10px; font-size: 11px; color: #888; line-height: 1.8;">
+                <span class="info-label">Pos: </span><span id="tfPos">0, 0, 0</span><br>
+                <span class="info-label">Rot: </span><span id="tfRot">0, 0, 0</span><br>
+                <span class="info-label">Scl: </span><span id="tfScl">1, 1, 1</span>
+            </div>
+            <div class="control-row" style="margin-top: 10px; justify-content: flex-start; gap: 6px;">
+                <button class="toggle-btn" onclick="resetTransform()">Reset</button>
+                <button class="toggle-btn" onclick="resetPosition()">Reset Pos</button>
+            </div>
+        </div>
+
+        <div class="panel-section">
             <h3>Camera</h3>
             <div class="control-row" style="justify-content: flex-start; gap: 6px;">
                 <button class="toggle-btn active" id="btnOrbit" onclick="setCameraMode('orbit')">Orbit</button>
@@ -409,6 +427,7 @@
     <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { TransformControls } from 'three/addons/controls/TransformControls.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -432,6 +451,14 @@
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.target.set(0, 1, 0);
+
+    const transformControls = new TransformControls(camera, renderer.domElement);
+    transformControls.setSize(0.8);
+    transformControls.addEventListener('dragging-changed', e => {
+        controls.enabled = !e.value;
+    });
+    transformControls.addEventListener('objectChange', updateTransformInfo);
+    scene.add(transformControls);
 
     // ── Lights ──
     const dirLight = new THREE.DirectionalLight(0xff8833, 2.0);
@@ -877,12 +904,16 @@
     // ── Model Selection ──
     function selectModel(name, createFn) {
         if (currentModel) {
+            transformControls.detach();
             scene.remove(currentModel);
             disposeModel(currentModel);
         }
         currentModel = createFn();
         scene.add(currentModel);
         currentModelName = name;
+
+        // Attach transform controls
+        transformControls.attach(currentModel);
 
         // Update active button
         document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
@@ -902,6 +933,7 @@
         controls.update();
 
         updateModelInfo(name, currentModel);
+        updateTransformInfo();
     }
 
     function disposeModel(obj) {
@@ -997,7 +1029,7 @@
             controls.enableRotate = true;
             controls.enablePan = true;
             document.getElementById('btnOrbit').classList.add('active');
-            indicator.textContent = 'Orbit Mode \u00b7 Scroll to zoom \u00b7 Right-click to pan';
+            indicator.textContent = 'Orbit Mode \u00b7 G Move \u00b7 R Rotate \u00b7 S Scale';
         } else if (mode === 'fly') {
             controls.enabled = false;
             document.getElementById('btnFly').classList.add('active');
@@ -1021,6 +1053,45 @@
     };
 
     let currentCameraMode = 'orbit';
+
+    // ── Transform Controls ──
+    window.setTransformMode = function(mode) {
+        transformControls.setMode(mode);
+        document.querySelectorAll('#right-panel .panel-section:has(#btnTranslate) .toggle-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
+    };
+
+    function updateTransformInfo() {
+        if (!currentModel) return;
+        const p = currentModel.position;
+        const r = currentModel.rotation;
+        const s = currentModel.scale;
+        document.getElementById('tfPos').textContent = `${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}`;
+        document.getElementById('tfRot').textContent = `${THREE.MathUtils.radToDeg(r.x).toFixed(1)}°, ${THREE.MathUtils.radToDeg(r.y).toFixed(1)}°, ${THREE.MathUtils.radToDeg(r.z).toFixed(1)}°`;
+        document.getElementById('tfScl').textContent = `${s.x.toFixed(2)}, ${s.y.toFixed(2)}, ${s.z.toFixed(2)}`;
+    }
+
+    window.resetTransform = function() {
+        if (!currentModel) return;
+        currentModel.position.set(0, 0, 0);
+        currentModel.rotation.set(0, 0, 0);
+        currentModel.scale.set(1, 1, 1);
+        updateTransformInfo();
+    };
+
+    window.resetPosition = function() {
+        if (!currentModel) return;
+        currentModel.position.set(0, 0, 0);
+        updateTransformInfo();
+    };
+
+    // Keyboard shortcuts for transform modes: G = translate, R = rotate, S = scale
+    document.addEventListener('keydown', e => {
+        if (e.target.tagName === 'INPUT') return;
+        if (e.code === 'KeyG') setTransformMode('translate');
+        else if (e.code === 'KeyR') setTransformMode('rotate');
+        else if (e.code === 'KeyS' && !e.ctrlKey) setTransformMode('scale');
+    });
 
     // ── Fly Camera ──
     const keys = {};
@@ -1078,13 +1149,15 @@
         const url = URL.createObjectURL(file);
         const loader = new GLTFLoader();
         loader.load(url, gltf => {
-            if (currentModel) { scene.remove(currentModel); disposeModel(currentModel); }
+            if (currentModel) { transformControls.detach(); scene.remove(currentModel); disposeModel(currentModel); }
             currentModel = gltf.scene;
             currentModel.traverse(c => {
                 if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; }
             });
             scene.add(currentModel);
             currentModelName = file.name;
+
+            transformControls.attach(currentModel);
 
             const box = new THREE.Box3().setFromObject(currentModel);
             const center = box.getCenter(new THREE.Vector3());
@@ -1097,6 +1170,7 @@
             controls.update();
 
             updateModelInfo(file.name, currentModel);
+            updateTransformInfo();
             URL.revokeObjectURL(url);
 
             document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
