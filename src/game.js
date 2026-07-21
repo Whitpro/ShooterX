@@ -253,13 +253,21 @@ class GameEngine {
 
             // Handle escape key globally
             // Using a separate event listener to ensure it's always captured
+            let _lastEscTime = 0;
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape' && this.state === GAME_STATES.PLAYING) {
+                    const now = performance.now();
+                    // Debounce rapid ESC presses (400ms cooldown)
+                    if (now - _lastEscTime < 400) {
+                        debug('ESC debounced, ignoring rapid press');
+                        return;
+                    }
+                    _lastEscTime = now;
+
                     event.preventDefault();
                     if (this.isPaused) {
                         debug('ESC key pressed - resuming game');
                         this.resumeGame();
-                        document.body.requestPointerLock();
                     } else {
                         debug('ESC key pressed - pausing game');
                         this.pauseGame();
