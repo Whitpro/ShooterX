@@ -57,56 +57,58 @@ class Settings {
                 #settingsScreen {
                     position: fixed; inset: 0;
                     display: flex; align-items: center; justify-content: center;
-                    background: rgba(20, 20, 30, 0.75);
+                    background: rgba(10, 10, 18, 0.6);
                     z-index: 1001;
-                    backdrop-filter: blur(12px);
+                    backdrop-filter: blur(16px);
                 }
                 #settingsScreen .settings-panel {
-                    background: rgba(10, 10, 18, 0.95);
-                    border: 1px solid rgba(255,255,255,0.08);
+                    background: rgba(10, 10, 18, 0.92);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
                     border-radius: 14px;
-                    width: 520px; max-width: 92vw;
+                    width: 480px; max-width: 92vw;
                     max-height: 88vh;
                     display: flex; flex-direction: column;
                     overflow: hidden;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+                    padding: 50px 44px;
                 }
                 #settingsScreen .settings-header {
                     display: flex; align-items: center; justify-content: center;
-                    padding: 28px 32px 0;
+                    margin-bottom: 36px;
                 }
                 #settingsScreen .settings-header h1 {
-                    font-size: 32px; font-weight: 700; color: #e8e8f0;
+                    font-size: 64px; font-weight: 700; color: #fff;
                     letter-spacing: 5px; margin: 0;
                 }
                 #settingsScreen .settings-tabs {
-                    display: flex; justify-content: center; gap: 4px;
-                    padding: 22px 32px 0;
+                    display: flex; justify-content: center; gap: 6px;
+                    margin-bottom: 28px;
                 }
                 #settingsScreen .settings-tab {
-                    padding: 10px 28px; font-size: 13px; font-weight: 600;
-                    letter-spacing: 1.5px; text-transform: uppercase;
+                    padding: 12px 32px; font-size: 16px; font-weight: 600;
+                    letter-spacing: 2px; text-transform: uppercase;
                     background: rgba(255,255,255,0.06);
-                    border: 1px solid rgba(255,255,255,0.08);
+                    border: 1px solid rgba(255,255,255,0.1);
                     color: rgba(255,255,255,0.5); cursor: pointer;
                     border-radius: 8px;
                     transition: all 0.2s;
+                    width: auto;
                 }
                 #settingsScreen .settings-tab:hover {
                     background: rgba(255,255,255,0.1);
                     color: rgba(255,255,255,0.8);
+                    transform: translateY(-2px);
                 }
                 #settingsScreen .settings-tab.active {
-                    background: rgba(90, 106, 255, 0.2);
-                    border-color: rgba(90, 106, 255, 0.4);
+                    background: rgba(90, 106, 255, 0.25);
+                    border-color: rgba(90, 106, 255, 0.5);
                     color: #fff;
                 }
                 #settingsScreen .settings-divider {
-                    width: 100%; height: 1px; margin: 18px 0 0;
-                    background: rgba(255,255,255,0.08);
+                    width: 55%; height: 1px; margin: 0 auto 24px;
+                    background: rgba(255, 255, 255, 0.15);
                 }
                 #settingsScreen .settings-body {
-                    flex: 1; overflow-y: auto; padding: 22px 32px 28px;
+                    flex: 1; overflow-y: auto; margin-bottom: 20px;
                 }
                 #settingsScreen .settings-body::-webkit-scrollbar { width: 6px; }
                 #settingsScreen .settings-body::-webkit-scrollbar-track { background: transparent; }
@@ -116,26 +118,26 @@ class Settings {
 
                 #settingsScreen .setting-row {
                     display: flex; align-items: center; justify-content: space-between;
-                    padding: 14px 16px; margin-bottom: 8px;
+                    padding: 16px 18px; margin-bottom: 10px;
                     background: rgba(255,255,255,0.04);
                     border: 1px solid rgba(255,255,255,0.06);
-                    border-radius: 10px;
+                    border-radius: 8px;
                     transition: all 0.15s;
                 }
                 #settingsScreen .setting-row:hover {
                     background: rgba(255,255,255,0.07);
                 }
                 #settingsScreen .setting-label {
-                    font-size: 14px; color: rgba(255,255,255,0.8); font-weight: 500;
+                    font-size: 15px; color: rgba(255,255,255,0.8); font-weight: 600;
                 }
                 #settingsScreen .setting-desc {
-                    font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 2px;
+                    font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 3px;
                 }
                 #settingsScreen .setting-control {
-                    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+                    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
                 }
                 #settingsScreen .setting-value {
-                    font-size: 13px; color: rgba(255,255,255,0.5); min-width: 32px; text-align: right;
+                    font-size: 14px; color: rgba(255,255,255,0.5); min-width: 32px; text-align: right;
                 }
 
                 #settingsScreen input[type="range"] {
@@ -143,27 +145,27 @@ class Settings {
                     background: rgba(255,255,255,0.12); border-radius: 3px; outline: none;
                 }
                 #settingsScreen input[type="range"]::-webkit-slider-thumb {
-                    -webkit-appearance: none; width: 16px; height: 16px;
+                    -webkit-appearance: none; width: 18px; height: 18px;
                     border-radius: 50%; background: #fff; cursor: pointer;
-                    border: 2px solid #5a6aff; box-shadow: 0 0 6px rgba(90,106,255,0.4);
+                    border: 2px solid #5a6aff; box-shadow: 0 0 8px rgba(90,106,255,0.4);
                 }
                 #settingsScreen input[type="range"]::-moz-range-thumb {
-                    width: 16px; height: 16px; border-radius: 50%;
+                    width: 18px; height: 18px; border-radius: 50%;
                     background: #fff; cursor: pointer; border: 2px solid #5a6aff;
                 }
 
                 #settingsScreen .toggle {
-                    position: relative; display: inline-block; width: 48px; height: 26px;
+                    position: relative; display: inline-block; width: 50px; height: 28px;
                 }
                 #settingsScreen .toggle input { opacity: 0; width: 0; height: 0; }
                 #settingsScreen .toggle .slider {
                     position: absolute; cursor: pointer; inset: 0;
                     background: rgba(255,255,255,0.1); transition: 0.25s;
-                    border-radius: 26px; border: 1px solid rgba(255,255,255,0.15);
+                    border-radius: 28px; border: 1px solid rgba(255,255,255,0.15);
                 }
                 #settingsScreen .toggle .slider:before {
                     position: absolute; content: "";
-                    height: 18px; width: 18px; left: 3px; bottom: 3px;
+                    height: 20px; width: 20px; left: 4px; bottom: 3px;
                     background: rgba(255,255,255,0.6); transition: 0.25s; border-radius: 50%;
                 }
                 #settingsScreen .toggle input:checked + .slider {
@@ -175,26 +177,28 @@ class Settings {
                 }
 
                 #settingsScreen select {
-                    padding: 8px 12px; border-radius: 6px;
+                    padding: 10px 14px; border-radius: 8px;
                     background: rgba(255,255,255,0.08);
                     border: 1px solid rgba(255,255,255,0.12);
-                    color: rgba(255,255,255,0.8); font-size: 13px;
+                    color: rgba(255,255,255,0.8); font-size: 14px;
                     font-family: inherit; cursor: pointer; outline: none;
-                    min-width: 120px;
+                    min-width: 130px;
                 }
                 #settingsScreen select:hover { border-color: rgba(255,255,255,0.2); }
                 #settingsScreen select:focus { border-color: rgba(90,106,255,0.5); }
                 #settingsScreen select option { background: #1a1a2e; color: #fff; }
 
                 #settingsScreen .settings-footer {
-                    padding: 0 32px 24px; display: flex; justify-content: center;
+                    display: flex; justify-content: center;
                 }
                 #settingsScreen .settings-back-btn {
-                    padding: 12px 48px;
+                    margin: 14px auto;
+                    width: 320px;
+                    padding: 20px 30px;
                     background: linear-gradient(135deg, #c62828, #8e0000);
                     color: #fff; border: none; border-radius: 8px;
-                    font-size: 15px; font-weight: 600; cursor: pointer;
-                    letter-spacing: 2px; transition: all 0.2s;
+                    font-size: 24px; font-weight: 600; cursor: pointer;
+                    letter-spacing: 3px; transition: all 0.2s;
                 }
                 #settingsScreen .settings-back-btn:hover {
                     background: linear-gradient(135deg, #e53935, #b71c1c);
