@@ -29,7 +29,9 @@ class Settings {
             mouseSensitivity: 0.002, // Default sensitivity
             hideTextures: false,     // Show textures by default
             fpsLock: 0,              // 0 = unlimited, other values = fps cap (always unlimited now)
-            showFpsCounter: true     // FPS counter display toggle - enabled by default
+            showFpsCounter: true,    // FPS counter display toggle - enabled by default
+            dayNightEnabled: true,   // Day/night cycle on by default
+            lockedTimeOfDay: 14      // Hour to lock to when cycle is off
         };
         
         // Try to load saved settings
@@ -85,6 +87,31 @@ class Settings {
                                 <input type="checkbox" id="showFpsCounter" ${this.settings.showFpsCounter ? 'checked' : ''}>
                                 <span class="slider"></span>
                             </label>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <label for="dayNightToggle">Day/Night Cycle</label>
+                        <div class="setting-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="dayNightToggle" ${this.settings.dayNightEnabled ? 'checked' : ''}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-group" id="timeOfDayGroup" style="${this.settings.dayNightEnabled ? 'display:none' : ''}">
+                        <label for="timeOfDaySelect">Time of Day</label>
+                        <div class="setting-control">
+                            <select id="timeOfDaySelect" style="width:100%;padding:8px;border-radius:5px;background:#1a1a2e;color:#fff;border:1px solid #333;font-family:Rajdhani,sans-serif;font-size:15px">
+                                <option value="0" ${this.settings.lockedTimeOfDay === 0 ? 'selected' : ''}>Midnight</option>
+                                <option value="5" ${this.settings.lockedTimeOfDay === 5 ? 'selected' : ''}>Dawn</option>
+                                <option value="7" ${this.settings.lockedTimeOfDay === 7 ? 'selected' : ''}>Sunrise</option>
+                                <option value="12" ${this.settings.lockedTimeOfDay === 12 ? 'selected' : ''}>Noon</option>
+                                <option value="15" ${this.settings.lockedTimeOfDay === 15 ? 'selected' : ''}>Afternoon</option>
+                                <option value="19" ${this.settings.lockedTimeOfDay === 19 ? 'selected' : ''}>Sunset</option>
+                                <option value="22" ${this.settings.lockedTimeOfDay === 22 ? 'selected' : ''}>Dusk</option>
+                            </select>
                         </div>
                     </div>
                     
@@ -375,6 +402,30 @@ class Settings {
                 
                 // Apply FPS counter visibility immediately
                 this.applyFpsCounterVisibility(fpsCounterToggle.checked);
+            };
+        }
+
+        // Day/night cycle toggle
+        const dayNightToggle = document.getElementById('dayNightToggle');
+        const timeOfDayGroup = document.getElementById('timeOfDayGroup');
+        if (dayNightToggle) {
+            dayNightToggle.onchange = () => {
+                this.settings.dayNightEnabled = dayNightToggle.checked;
+                if (timeOfDayGroup) {
+                    timeOfDayGroup.style.display = dayNightToggle.checked ? 'none' : '';
+                }
+                this.applyDayNightCycle();
+            };
+        }
+
+        // Time of day select
+        const timeOfDaySelect = document.getElementById('timeOfDaySelect');
+        if (timeOfDaySelect) {
+            timeOfDaySelect.onchange = () => {
+                this.settings.lockedTimeOfDay = parseInt(timeOfDaySelect.value);
+                if (!this.settings.dayNightEnabled) {
+                    this.applyDayNightCycle();
+                }
             };
         }
     }
@@ -735,6 +786,19 @@ class Settings {
         
         // Apply FPS counter visibility
         this.applyFpsCounterVisibility(this.settings.showFpsCounter);
+
+        // Apply day/night cycle
+        this.applyDayNightCycle();
+    }
+
+    applyDayNightCycle() {
+        const cycle = this.game?.environment?.dayNightCycle;
+        if (!cycle) return;
+        if (this.settings.dayNightEnabled) {
+            cycle.setFrozen(false);
+        } else {
+            cycle.setFrozen(true, this.settings.lockedTimeOfDay);
+        }
     }
     
     show() {
@@ -792,6 +856,19 @@ class Settings {
         if (showFpsCounterToggle) {
             showFpsCounterToggle.checked = this.settings.showFpsCounter;
         }
+
+        const dayNightToggle = document.getElementById('dayNightToggle');
+        const timeOfDayGroup = document.getElementById('timeOfDayGroup');
+        const timeOfDaySelect = document.getElementById('timeOfDaySelect');
+        if (dayNightToggle) {
+            dayNightToggle.checked = this.settings.dayNightEnabled;
+        }
+        if (timeOfDayGroup) {
+            timeOfDayGroup.style.display = this.settings.dayNightEnabled ? 'none' : '';
+        }
+        if (timeOfDaySelect) {
+            timeOfDaySelect.value = this.settings.lockedTimeOfDay;
+        }
     }
     
     // Save settings to localStorage
@@ -828,6 +905,14 @@ class Settings {
                 // Load FPS counter setting if available
                 if (parsed.showFpsCounter !== undefined) {
                     this.settings.showFpsCounter = parsed.showFpsCounter;
+                }
+                
+                // Load day/night cycle settings
+                if (parsed.dayNightEnabled !== undefined) {
+                    this.settings.dayNightEnabled = parsed.dayNightEnabled;
+                }
+                if (parsed.lockedTimeOfDay !== undefined) {
+                    this.settings.lockedTimeOfDay = parsed.lockedTimeOfDay;
                 }
                 
                 debug('Settings loaded from localStorage');
