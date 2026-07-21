@@ -952,25 +952,19 @@ class Environment {
             return new THREE.CanvasTexture(c);
         };
 
-        // Create a billboarded circle mesh (true circular geometry, not a quad)
+        // Create a billboarded glow sprite (always faces the camera)
         const makeGlowDisc = (texture, worldSize) => {
-            const geo = new THREE.CircleGeometry(1, 24);
-            const mat = new THREE.MeshBasicMaterial({
+            const mat = new THREE.SpriteMaterial({
                 map: texture,
                 transparent: true,
                 blending: THREE.AdditiveBlending,
                 depthWrite: false,
-                side: THREE.DoubleSide,
                 alphaTest: 0.01,
             });
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.copy(position);
-            mesh.scale.set(worldSize, worldSize, 1);
-            // Always face the camera (billboard behavior)
-            mesh.onBeforeRender = (renderer, scene, camera) => {
-                mesh.quaternion.copy(camera.quaternion);
-            };
-            return mesh;
+            const sprite = new THREE.Sprite(mat);
+            sprite.position.copy(position);
+            sprite.scale.set(worldSize, worldSize, 1);
+            return sprite;
         };
 
         // 1. Hot sun core sphere
