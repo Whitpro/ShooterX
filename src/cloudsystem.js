@@ -1,8 +1,49 @@
 import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
-import { mergeGeometries } from '../three.js-r178/three.js-r178/examples/jsm/utils/BufferGeometryUtils.js';
 
 const CLOUD_RADIUS = 8;
 const SPHERE_SEGMENTS = 8;
+
+function mergeGeometries(geometries) {
+    let totalVerts = 0;
+    let totalIdx = 0;
+    for (const g of geometries) {
+        totalVerts += g.attributes.position.count;
+        totalIdx += g.index.count;
+    }
+
+    const pos = new Float32Array(totalVerts * 3);
+    const norm = new Float32Array(totalVerts * 3);
+    const uv = new Float32Array(totalVerts * 2);
+    const idx = new Uint32Array(totalIdx);
+
+    let vo = 0, io = 0;
+    for (const g of geometries) {
+        const p = g.attributes.position;
+        const n = g.attributes.normal;
+        const u = g.attributes.uv;
+        const ind = g.index;
+        const count = p.count;
+
+        pos.set(p.array, vo * 3);
+        norm.set(n.array, vo * 3);
+        uv.set(u.array, vo * 2);
+
+        const srcIdx = ind.array;
+        for (let i = 0; i < ind.count; i++) {
+            idx[io + i] = srcIdx[i] + vo;
+        }
+
+        vo += count;
+        io += ind.count;
+    }
+
+    const merged = new THREE.BufferGeometry();
+    merged.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    merged.setAttribute('normal', new THREE.BufferAttribute(norm, 3));
+    merged.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    merged.setIndex(new THREE.BufferAttribute(idx, 1));
+    return merged;
+}
 
 class CloudSystem {
     constructor(scene) {
@@ -56,7 +97,7 @@ class CloudSystem {
                 puffs.push(geo);
             }
 
-            const mergedGeo = mergeGeometries(puffs, false);
+            const mergedGeo = mergeGeometries(puffs);
             const mesh = new THREE.Mesh(mergedGeo, this._material);
             mesh.position.copy(center);
             mesh.castShadow = true;
