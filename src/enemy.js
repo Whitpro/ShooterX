@@ -93,10 +93,16 @@ class Enemy {
         this.model.userData.enemy = this;
         this.scene.add(this.model);
 
-        // Foot light — turns on in darkness
-        this.footLight = new THREE.PointLight(0xffaa44, 0, 6);
-        this.footLight.position.set(0, 0.1, 0);
-        this.model.add(this.footLight);
+        // Foot glow — emissive sphere (cheaper than PointLight)
+        const glowGeo = new THREE.SphereGeometry(0.18, 6, 6);
+        const glowMat = new THREE.MeshBasicMaterial({
+            color: 0xffaa44,
+            transparent: true,
+            opacity: 0,
+        });
+        this.footGlow = new THREE.Mesh(glowGeo, glowMat);
+        this.footGlow.position.set(0, 0.05, 0);
+        this.model.add(this.footGlow);
 
         const barWidth = Math.min(2.0, Math.max(1.2, config.health / 80));
         const barHeight = 0.25;
@@ -418,8 +424,8 @@ class Enemy {
     }
 
     setFootLightIntensity(value) {
-        if (this.footLight) {
-            this.footLight.intensity = value;
+        if (this.footGlow) {
+            this.footGlow.material.opacity = value * 0.5;
         }
     }
 
@@ -456,7 +462,7 @@ class Enemy {
         }
 
         this.model = null;
-        this.footLight = null;
+        this.footGlow = null;
         this.healthBarContainer = null;
         this.healthBarBackground = null;
         this.healthBarForeground = null;
