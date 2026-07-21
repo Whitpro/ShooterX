@@ -60,6 +60,7 @@ class Enemy {
         this.pulseAnimation = null;
         this.healthBarTextures = null;
 
+        this.footLight = null;
         this.createModel();
     }
 
@@ -91,6 +92,11 @@ class Enemy {
         this.model.userData.type = 'enemy';
         this.model.userData.enemy = this;
         this.scene.add(this.model);
+
+        // Foot light — turns on in darkness
+        this.footLight = new THREE.PointLight(0xffaa44, 0, 6);
+        this.footLight.position.set(0, 0.1, 0);
+        this.model.add(this.footLight);
 
         const barWidth = Math.min(2.0, Math.max(1.2, config.health / 80));
         const barHeight = 0.25;
@@ -411,6 +417,12 @@ class Enemy {
         material.dispose();
     }
 
+    setFootLightIntensity(value) {
+        if (this.footLight) {
+            this.footLight.intensity = value;
+        }
+    }
+
     dispose() {
         if (this._isDisposed) return;
         this._isDisposed = true;
@@ -444,6 +456,7 @@ class Enemy {
         }
 
         this.model = null;
+        this.footLight = null;
         this.healthBarContainer = null;
         this.healthBarBackground = null;
         this.healthBarForeground = null;

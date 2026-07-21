@@ -117,7 +117,12 @@ class Player {
         // Create a group to hold all player models
         this.modelGroup = new THREE.Group();
         this.scene.add(this.modelGroup);
-        
+
+        // Foot light — turns on in darkness
+        this.footLight = new THREE.PointLight(0xffaa44, 0, 8);
+        this.footLight.position.set(0, 0.1, 0);
+        this.modelGroup.add(this.footLight);
+
         // Cleaner low-detail body for top-down / shadow use
         const boxGeometry = new THREE.CapsuleGeometry(0.22, 0.95, 6, 12);
         const boxMaterial = new THREE.MeshPhongMaterial({ color: 0x2957d1, shininess: 20 });
@@ -377,6 +382,12 @@ class Player {
         // Update camera position
         this.updateCameraPosition();
         this.applyCameraTarget(true);
+    }
+
+    setFootLightIntensity(value) {
+        if (this.footLight) {
+            this.footLight.intensity = value;
+        }
     }
     
     setFirstPersonWeaponModel(model) {

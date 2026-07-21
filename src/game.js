@@ -543,7 +543,23 @@ class GameEngine {
                 // Update animated barrier wall with player position
                 this.environment.updateAnimatedBarrierWall(deltaTime, this.player.position);
             }
-            
+
+            // Update foot lights based on darkness
+            if (this.environment && this.environment.dayNightCycle) {
+                const darkness = this.environment.dayNightCycle.getDarkness();
+                const intensity = darkness * darkness * 3;
+                if (this.player) {
+                    this.player.setFootLightIntensity(intensity);
+                }
+                if (this.enemyManager) {
+                    for (const enemy of this.enemyManager.enemies) {
+                        if (enemy && enemy.isAlive) {
+                            enemy.setFootLightIntensity(intensity);
+                        }
+                    }
+                }
+            }
+
             // Handle shooting
             if (this.input.isMouseButtonPressed('left') && document.pointerLockElement === document.body) {
                 const shotResult = this.weapon.shoot(this.enemyManager);

@@ -175,6 +175,7 @@ class Environment {
         this._tempGrassQuaternion = new THREE.Quaternion();
 
         this.sunObjects = [];
+        this.moonObjects = [];
         this.sunLight = null;
         this.rimLight = null;
         this.skyDome = null;
@@ -356,6 +357,20 @@ class Environment {
             });
         }
         this.sunObjects = [];
+
+        // Clean up moon objects
+        if (this.moonObjects && this.moonObjects.length > 0) {
+            this.moonObjects.forEach(obj => {
+                this.scene.remove(obj);
+                if (obj.material) {
+                    if (obj.material.map) obj.material.map.dispose();
+                    obj.material.dispose();
+                }
+                if (obj.geometry) obj.geometry.dispose();
+                totalObjectsRemoved++;
+            });
+        }
+        this.moonObjects = [];
 
         // Clean up sky dome
         if (this.skyDome) {
@@ -944,42 +959,43 @@ class Environment {
 
         // 6. Visible sun and godrays
         this.createSun(sunPosition);
+
+        // 7. Moon (position will be updated by day/night cycle)
+        const moonPosition = new THREE.Vector3(-40, 150, -20);
+        this.createMoon(moonPosition);
+    }
+
+    _makeGlowTexture(stops, size = 256) {
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+        const ctx = c.getContext('2d');
+        const half = size / 2;
+        ctx.beginPath();
+        ctx.arc(half, half, half, 0, Math.PI * 2);
+        ctx.clip();
+        const g = ctx.createRadialGradient(half, half, 0, half, half, half);
+        stops.forEach(([offset, color]) => g.addColorStop(offset, color));
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, size, size);
+        return new THREE.CanvasTexture(c);
+    }
+
+    _makeGlowSprite(texture, worldSize, position) {
+        const mat = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            alphaTest: 0.01,
+        });
+        const sprite = new THREE.Sprite(mat);
+        sprite.position.copy(position);
+        sprite.scale.set(worldSize, worldSize, 1);
+        return sprite;
     }
 
     createSun(position) {
-        // Helper: make a radial-gradient canvas texture clipped to a circle
-        const makeGlowTexture = (stops, size = 256) => {
-            const c = document.createElement('canvas');
-            c.width = size;
-            c.height = size;
-            const ctx = c.getContext('2d');
-            const half = size / 2;
-            // Clip to circle so canvas corners are pure transparent
-            ctx.beginPath();
-            ctx.arc(half, half, half, 0, Math.PI * 2);
-            ctx.clip();
-            const g = ctx.createRadialGradient(half, half, 0, half, half, half);
-            stops.forEach(([offset, color]) => g.addColorStop(offset, color));
-            ctx.fillStyle = g;
-            ctx.fillRect(0, 0, size, size);
-            return new THREE.CanvasTexture(c);
-        };
-
-        // Create a billboarded glow sprite (always faces the camera)
-        const makeGlowDisc = (texture, worldSize) => {
-            const mat = new THREE.SpriteMaterial({
-                map: texture,
-                transparent: true,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false,
-                alphaTest: 0.01,
-            });
-            const sprite = new THREE.Sprite(mat);
-            sprite.position.copy(position);
-            sprite.scale.set(worldSize, worldSize, 1);
-            return sprite;
-        };
-
         // 1. Hot sun core sphere
         const sunGeo = new THREE.SphereGeometry(3, 16, 16);
         const sunMat = new THREE.MeshBasicMaterial({ color: 0xff6622 });
@@ -989,27 +1005,48 @@ class Environment {
         this.sunObjects.push(sunMesh);
 
         // 2. Core glow — tight bright burst
-        const coreTex = makeGlowTexture([
+        const coreTex = this._makeGlowTexture([
             [0,   'rgba(255, 200, 100, 1)'],
             [0.12, 'rgba(255, 150,  50, 0.8)'],
             [0.35, 'rgba(255, 100,  30, 0.25)'],
             [0.6, 'rgba(200,  70,  20, 0.05)'],
             [1,   'rgba(150,  40,  10, 0)']
         ]);
-        const coreDisc = makeGlowDisc(coreTex, 60);
+        const coreDisc = this._makeGlowSprite(coreTex, 60, position);
         this.scene.add(coreDisc);
         this.sunObjects.push(coreDisc);
 
         // 3. Mid glow — warm halo
-        const midTex = makeGlowTexture([
+        const midTex = this._makeGlowTexture([
             [0,   'rgba(255, 180,  80, 0.55)'],
             [0.18, 'rgba(255, 140,  50, 0.22)'],
             [0.4, 'rgba(200, 100,  30, 0.06)'],
             [1,   'rgba(160,  70,  20, 0)']
         ], 256);
-        const midDisc = makeGlowDisc(midTex, 100);
+        const midDisc = this._makeGlowSprite(midTex, 100, position);
         this.scene.add(midDisc);
         this.sunObjects.push(midDisc);
+    }
+
+    createMoon(position) {
+        // 1. Pale moon sphere
+        const moonGeo = new THREE.SphereGeometry(2, 16, 16);
+        const moonMat = new THREE.MeshBasicMaterial({ color: 0xddddee });
+        const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+        moonMesh.position.copy(position);
+        this.scene.add(moonMesh);
+        this.moonObjects.push(moonMesh);
+
+        // 2. Subtle glow sprite
+        const glowTex = this._makeGlowTexture([
+            [0,   'rgba(220, 220, 255, 0.4)'],
+            [0.2, 'rgba(180, 180, 230, 0.15)'],
+            [0.5, 'rgba(140, 140, 200, 0.04)'],
+            [1,   'rgba(100, 100, 160, 0)']
+        ]);
+        const glow = this._makeGlowSprite(glowTex, 40, position);
+        this.scene.add(glow);
+        this.moonObjects.push(glow);
     }
 
     createPointLight(x, y, z, color, distance, intensity) {

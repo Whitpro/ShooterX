@@ -80,8 +80,9 @@ class DayNightCycle {
         this._lastGradientKey = -1;
         this._skipFirstFrame = 2;
 
-        // Reusable sun position vector
+        // Reusable position vectors
         this._sunPos = new THREE.Vector3();
+        this._moonPos = new THREE.Vector3();
     }
 
     dispose() {
@@ -108,8 +109,16 @@ class DayNightCycle {
 
         this._applyLights(kf);
         this._updateSunPosition();
+        this._updateMoonPosition();
         this._updateSkyDome(kf);
         this._updateFog(kf);
+    }
+
+    /** Returns 0 (bright day) → 1 (pitch night) */
+    getDarkness() {
+        const rawElev = Math.sin(((this.hour - 6) / 12) * Math.PI);
+        const t = (rawElev - 0.1) / (-0.3 - 0.1);
+        return Math.max(0, Math.min(1, t));
     }
 
     _sample(hour) {
@@ -201,6 +210,26 @@ class DayNightCycle {
         const visible = y > 10;
         for (const obj of env.sunObjects) {
             obj.position.copy(this._sunPos);
+            obj.visible = visible;
+        }
+    }
+
+    _updateMoonPosition() {
+        const env = this.env;
+        // Moon is 12 hours offset from the sun
+        const phi = (((this.hour + 12) - 6) / 12) * Math.PI;
+        const elev = Math.sin(phi);
+        const horiz = Math.cos(phi);
+
+        const x = -horiz * 50 + 70;
+        const y = elev * 100 + 50;
+        const z = horiz * 10 + 20;
+        this._moonPos.set(x, y, z);
+
+        const darkness = this.getDarkness();
+        const visible = darkness > 0.15 && y > 10;
+        for (const obj of env.moonObjects) {
+            obj.position.copy(this._moonPos);
             obj.visible = visible;
         }
     }
