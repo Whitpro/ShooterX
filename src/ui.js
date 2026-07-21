@@ -148,128 +148,135 @@ class UI {
             #monsterInfoScreen {
                 position: fixed; inset: 0;
                 display: flex; align-items: center; justify-content: center;
-                background: rgba(0,0,0,0.88);
+                background: rgba(20, 20, 30, 0.75);
                 z-index: 9999;
-                backdrop-filter: blur(8px);
+                backdrop-filter: blur(12px);
             }
             #monsterInfoScreen .info-panel {
-                background: rgba(10, 10, 18, 0.95);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 14px;
+                background: rgba(30, 32, 48, 0.96);
+                border: 1px solid rgba(255,255,255,0.12);
+                border-radius: 16px;
                 width: 780px; max-width: 92vw;
                 max-height: 88vh;
                 display: flex; flex-direction: column;
                 overflow: hidden;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
             }
             #monsterInfoScreen .info-header {
                 display: flex; align-items: center; justify-content: center;
                 padding: 28px 32px 0;
             }
             #monsterInfoScreen .info-header h1 {
-                font-size: 36px; font-weight: 700; color: #fff;
-                letter-spacing: 4px; margin: 0;
+                font-size: 32px; font-weight: 700; color: #e8e8f0;
+                letter-spacing: 5px; margin: 0;
             }
             #monsterInfoScreen .info-tabs {
-                display: flex; justify-content: center; gap: 0;
-                padding: 20px 32px 0;
+                display: flex; justify-content: center; gap: 4px;
+                padding: 22px 32px 0;
             }
             #monsterInfoScreen .info-tab {
-                padding: 12px 36px; font-size: 14px; font-weight: 600;
-                letter-spacing: 2px; text-transform: uppercase;
-                background: transparent; border: none;
-                color: rgba(255,255,255,0.35); cursor: pointer;
-                border-bottom: 2px solid transparent;
+                padding: 10px 32px; font-size: 13px; font-weight: 600;
+                letter-spacing: 1.5px; text-transform: uppercase;
+                background: rgba(255,255,255,0.06);
+                border: 1px solid rgba(255,255,255,0.08);
+                color: rgba(255,255,255,0.5); cursor: pointer;
+                border-radius: 8px;
                 transition: all 0.2s;
             }
-            #monsterInfoScreen .info-tab:hover { color: rgba(255,255,255,0.6); }
+            #monsterInfoScreen .info-tab:hover {
+                background: rgba(255,255,255,0.1);
+                color: rgba(255,255,255,0.8);
+            }
             #monsterInfoScreen .info-tab.active {
-                color: #fff; border-bottom-color: #5a6aff;
+                background: rgba(90, 106, 255, 0.2);
+                border-color: rgba(90, 106, 255, 0.4);
+                color: #fff;
             }
             #monsterInfoScreen .info-divider {
-                width: 80%; height: 1px; margin: 16px auto 0;
+                width: 100%; height: 1px; margin: 18px 0 0;
                 background: rgba(255,255,255,0.08);
             }
             #monsterInfoScreen .info-body {
-                flex: 1; overflow-y: auto; padding: 20px 28px 28px;
+                flex: 1; overflow-y: auto; padding: 22px 28px 28px;
             }
             #monsterInfoScreen .info-body::-webkit-scrollbar { width: 6px; }
             #monsterInfoScreen .info-body::-webkit-scrollbar-track { background: transparent; }
-            #monsterInfoScreen .info-body::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+            #monsterInfoScreen .info-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
 
             #monsterInfoScreen .enemy-grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-                gap: 16px;
+                gap: 14px;
             }
             #monsterInfoScreen .enemy-card {
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.06);
-                border-radius: 10px;
-                padding: 18px 16px;
+                background: rgba(255,255,255,0.06);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 12px;
+                padding: 20px 16px;
                 text-align: center;
                 transition: all 0.2s;
             }
             #monsterInfoScreen .enemy-card:hover {
-                background: rgba(255,255,255,0.07);
-                border-color: rgba(255,255,255,0.12);
+                background: rgba(255,255,255,0.1);
+                border-color: rgba(255,255,255,0.15);
                 transform: translateY(-2px);
             }
             #monsterInfoScreen .enemy-img {
-                width: 80px; height: 80px;
+                width: 76px; height: 76px;
                 object-fit: contain;
                 margin-bottom: 12px;
-                filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+                filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
             }
             #monsterInfoScreen .enemy-name {
-                font-size: 16px; font-weight: 700; margin-bottom: 10px;
+                font-size: 15px; font-weight: 700; margin-bottom: 10px;
                 letter-spacing: 1px;
             }
             #monsterInfoScreen .enemy-stats {
                 display: grid; grid-template-columns: 1fr 1fr;
-                gap: 4px 8px; font-size: 12px;
+                gap: 3px 8px; font-size: 12px;
             }
             #monsterInfoScreen .enemy-stats .stat-label {
-                color: rgba(255,255,255,0.35); text-align: right;
+                color: rgba(255,255,255,0.4); text-align: right;
             }
             #monsterInfoScreen .enemy-stats .stat-value {
-                color: rgba(255,255,255,0.75); text-align: left;
+                color: rgba(255,255,255,0.8); text-align: left; font-weight: 500;
             }
             #monsterInfoScreen .enemy-desc {
-                margin-top: 10px; font-size: 11px; color: rgba(255,255,255,0.4);
+                margin-top: 10px; font-size: 11px; color: rgba(255,255,255,0.45);
                 line-height: 1.5;
             }
 
             #monsterInfoScreen .powerup-grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-                gap: 16px;
+                gap: 14px;
             }
             #monsterInfoScreen .powerup-card {
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.06);
-                border-radius: 10px;
-                padding: 24px 18px;
+                background: rgba(255,255,255,0.06);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 12px;
+                padding: 26px 18px;
                 text-align: center;
                 transition: all 0.2s;
             }
             #monsterInfoScreen .powerup-card:hover {
-                background: rgba(255,255,255,0.07);
-                border-color: rgba(255,255,255,0.12);
+                background: rgba(255,255,255,0.1);
+                border-color: rgba(255,255,255,0.15);
                 transform: translateY(-2px);
             }
             #monsterInfoScreen .powerup-icon {
-                width: 48px; height: 48px;
+                width: 50px; height: 50px;
                 border-radius: 50%;
                 margin: 0 auto 14px;
                 display: flex; align-items: center; justify-content: center;
-                font-size: 22px;
+                font-size: 22px; font-weight: 700;
             }
             #monsterInfoScreen .powerup-name {
-                font-size: 15px; font-weight: 700; margin-bottom: 8px;
-                letter-spacing: 1px; color: #fff;
+                font-size: 14px; font-weight: 700; margin-bottom: 8px;
+                letter-spacing: 1.5px; color: #e8e8f0;
             }
             #monsterInfoScreen .powerup-desc {
-                font-size: 12px; color: rgba(255,255,255,0.45);
+                font-size: 12px; color: rgba(255,255,255,0.5);
                 line-height: 1.6;
             }
 
@@ -281,7 +288,7 @@ class UI {
                 padding: 12px 48px;
                 background: linear-gradient(135deg, #c62828, #8e0000);
                 color: #fff; border: none; border-radius: 8px;
-                font-size: 16px; font-weight: 600; cursor: pointer;
+                font-size: 15px; font-weight: 600; cursor: pointer;
                 letter-spacing: 2px; transition: all 0.2s;
             }
             #monsterInfoScreen .info-back-btn:hover {
