@@ -568,8 +568,8 @@ class Settings {
                 if (parsed.autoReload !== undefined) this.settings.autoReload = parsed.autoReload;
                 if (parsed.hideTextures !== undefined) this.settings.hideTextures = parsed.hideTextures;
                 if (parsed.showFpsCounter !== undefined) this.settings.showFpsCounter = parsed.showFpsCounter;
-                if (parsed.dayNightEnabled !== undefined) this.settings.dayNightEnabled = parsed.dayNightEnabled;
                 if (parsed.lockedTimeOfDay !== undefined) this.settings.lockedTimeOfDay = parsed.lockedTimeOfDay;
+                // dayNightEnabled always defaults to true
             }
             if (this.game) this.applyAllSettings();
         } catch (error) {
