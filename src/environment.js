@@ -889,7 +889,7 @@ class Environment {
 
         // 2. Directional light (sun) — low warm sun
         const sunPosition = new THREE.Vector3(70, 150, 30);
-        const sunLight = new THREE.DirectionalLight(0xff8833, 1.2);
+        const sunLight = new THREE.DirectionalLight(0xff8833, 2.0);
         sunLight.position.copy(sunPosition);
         sunLight.castShadow = true;
 
