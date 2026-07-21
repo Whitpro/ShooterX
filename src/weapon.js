@@ -55,9 +55,24 @@ class Weapon {
 
         this.positionOffset = new THREE.Vector3(0.2, -0.15, -0.3);
         this.rotationOffset = new THREE.Euler(0, 0, 0);
-        this.bobAmount = 0.02;
-        this.bobSpeed = 0.1;
+
+        // Gun sway / bob system (rewritten)
         this.bobTime = 0;
+        this._swayPos = new THREE.Vector3();
+        this._swayRot = new THREE.Euler();
+        this._swayPosTarget = new THREE.Vector3();
+        this._swayRotTarget = new THREE.Euler();
+        this._breathTime = 0;
+        this._mouseSwayX = 0;
+        this._mouseSwayY = 0;
+
+        // Track mouse for weapon sway
+        this._onWeaponMouseMove = (event) => {
+            if (document.pointerLockElement !== document.body) return;
+            this._mouseSwayX -= (event.movementX || 0) * 0.0008;
+            this._mouseSwayY -= (event.movementY || 0) * 0.0008;
+        };
+        document.addEventListener('mousemove', this._onWeaponMouseMove);
 
         this._raycaster = new THREE.Raycaster();
         this._aimVector = new THREE.Vector2(0, 0);
@@ -327,53 +342,98 @@ class Weapon {
             this.model.visible = playerViewMode !== 'thirdPerson';
         }
 
+        // Must advance reload animation even when model is hidden,
+        // otherwise isReloading stays true and the UI indicator gets stuck.
+        if (this.isReloading) {
+            this.updateReloadAnimation(deltaTime);
+            return;
+        }
+
         if (!this.model.visible) return;
 
-        if (this.currentRecoil > 0) {
-            this.recoverFromRecoil();
-        }
+        // === GUN SWAY / BOB SYSTEM ===
+        const s = Math.min(1, deltaTime * 8);
 
+        // 1. Mouse-lag sway — decay accumulated target toward zero
+        this._mouseSwayX *= Math.max(0, 1 - deltaTime * 4);
+        this._mouseSwayY *= Math.max(0, 1 - deltaTime * 4);
+
+        // 2. Idle breathing
+        this._breathTime += deltaTime * 1.5;
+        const breathY = Math.sin(this._breathTime) * 0.003;
+        const breathRot = Math.sin(this._breathTime * 0.7) * 0.001;
+
+        // 3. Movement bob
+        let bobX = 0, bobY = 0, bobRotX = 0, bobRotZ = 0;
         if (playerVelocity) {
             const speed = Math.sqrt(playerVelocity.x * playerVelocity.x + playerVelocity.z * playerVelocity.z);
-
             if (speed > 0.5) {
-                this.bobTime += deltaTime * this.bobSpeed * (speed / 5);
-                const bobX = Math.sin(this.bobTime * 2) * this.bobAmount * speed;
-                const bobY = Math.sin(this.bobTime * 4) * this.bobAmount * speed;
-                this.model.position.x = this.positionOffset.x + bobX;
-                this.model.position.y = this.positionOffset.y + bobY;
-            } else {
-                this.model.position.x = THREE.MathUtils.lerp(this.model.position.x, this.positionOffset.x, deltaTime * 5);
-                this.model.position.y = THREE.MathUtils.lerp(this.model.position.y, this.positionOffset.y, deltaTime * 5);
+                this.bobTime += deltaTime * 10 * (speed / 5);
+                bobX = Math.sin(this.bobTime) * 0.008 * speed;
+                bobY = Math.sin(this.bobTime * 2) * 0.015 * speed;
+                bobRotX = Math.sin(this.bobTime * 2) * 0.006 * speed;
+                bobRotZ = Math.sin(this.bobTime) * 0.004 * speed;
             }
         }
 
-        if (this.isReloading) {
-            const elapsed = performance.now() - this.reloadStartTime;
-            const progress = Math.min(1, elapsed / this.reloadTime);
+        // 4. Build combined target
+        this._swayPosTarget.set(
+            this.positionOffset.x + bobX + this._mouseSwayX,
+            this.positionOffset.y + bobY + breathY,
+            0
+        );
+        this._swayRotTarget.set(
+            bobRotX + breathRot + this._mouseSwayX * 2,
+            0,
+            bobRotZ + this._mouseSwayX * 1.5
+        );
 
-            if (progress < 0.5) {
-                const downAmount = Math.sin(progress * Math.PI) * 0.2;
-                const rotateAmount = progress * 0.3;
-                this.model.position.y = this.positionOffset.y - downAmount;
-                this.model.rotation.x = this.rotationOffset.x + rotateAmount;
-            } else {
-                const upProgress = (progress - 0.5) * 2;
-                const downAmount = Math.sin((1 - upProgress) * Math.PI) * 0.2;
-                const rotateAmount = (1 - upProgress) * 0.3;
-                this.model.position.y = this.positionOffset.y - downAmount;
-                this.model.rotation.x = this.rotationOffset.x + rotateAmount;
-            }
+        // 5. Smoothly interpolate
+        this._swayPos.lerp(this._swayPosTarget, s);
+        this.model.position.x = this._swayPos.x;
+        this.model.position.y = this._swayPos.y;
 
-            if (progress >= 1) {
-                this.isReloading = false;
-                this.ammo = this.maxAmmo;
-                this.model.position.copy(this.positionOffset);
-                this.model.rotation.copy(this.rotationOffset);
-                if (window.gameEngine && window.gameEngine.ui) {
-                    window.gameEngine.ui.hideReloadIndicator();
-                    window.gameEngine.ui.updateAmmoCounter(this.ammo, this.maxAmmo);
-                }
+        this._swayRot.x += (this._swayRotTarget.x - this._swayRot.x) * s;
+        this._swayRot.z += (this._swayRotTarget.z - this._swayRot.z) * s;
+        this.model.rotation.x = this._swayRot.x;
+        this.model.rotation.z = this._swayRot.z;
+    }
+
+    updateReloadAnimation(deltaTime) {
+        const elapsed = performance.now() - this.reloadStartTime;
+        const progress = Math.min(1, elapsed / this.reloadTime);
+
+        if (progress < 0.5) {
+            const downAmount = Math.sin(progress * Math.PI) * 0.2;
+            const rotateAmount = progress * 0.3;
+            this.model.position.y = this.positionOffset.y - downAmount;
+            this.model.rotation.x = this.rotationOffset.x + rotateAmount;
+            // Keep horizontal position at sway target while reloading
+            this._swayPosTarget.x = this.positionOffset.x + this._mouseSwayX;
+            this._swayPos.lerp(this._swayPosTarget, Math.min(1, deltaTime * 8));
+            this.model.position.x = this._swayPos.x;
+        } else {
+            const upProgress = (progress - 0.5) * 2;
+            const downAmount = Math.sin((1 - upProgress) * Math.PI) * 0.2;
+            const rotateAmount = (1 - upProgress) * 0.3;
+            this.model.position.y = this.positionOffset.y - downAmount;
+            this.model.rotation.x = this.rotationOffset.x + rotateAmount;
+            this._swayPosTarget.x = this.positionOffset.x + this._mouseSwayX;
+            this._swayPos.lerp(this._swayPosTarget, Math.min(1, deltaTime * 8));
+            this.model.position.x = this._swayPos.x;
+        }
+
+        if (progress >= 1) {
+            this.isReloading = false;
+            this.ammo = this.maxAmmo;
+            // Reset sway targets to rest position
+            this._swayPosTarget.set(this.positionOffset.x, this.positionOffset.y, 0);
+            this._swayPos.copy(this._swayPosTarget);
+            this.model.position.copy(this.positionOffset);
+            this.model.rotation.copy(this.rotationOffset);
+            this._swayRot.set(0, 0, 0);
+            if (window.gameEngine && window.gameEngine.ui) {
+                window.gameEngine.ui.hideReloadIndicator();
             }
         }
     }
@@ -433,7 +493,11 @@ class Weapon {
     }
 
     reset() {
-
+        // Re-attach mousemove listener (removed on previous reset)
+        if (this._onWeaponMouseMove) {
+            document.removeEventListener('mousemove', this._onWeaponMouseMove);
+            document.addEventListener('mousemove', this._onWeaponMouseMove);
+        }
 
         if (this._rapidfireTimeout) {
             clearTimeout(this._rapidfireTimeout);
@@ -494,7 +558,16 @@ class Weapon {
 
         resetFlashPool(this.hitFlashPool);
         resetFlashPool(this.muzzleFlashPool);
+
+        // Reset sway / bob state to rest position
         this.bobTime = 0;
+        this._breathTime = 0;
+        this._mouseSwayX = 0;
+        this._mouseSwayY = 0;
+        this._swayPos.copy(this.positionOffset);
+        this._swayRot.set(0, 0, 0);
+        this._swayPosTarget.copy(this.positionOffset);
+        this._swayRotTarget.set(0, 0, 0);
 
     }
 

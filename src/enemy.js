@@ -38,7 +38,6 @@ class Enemy {
             changeTimeMax: 7000
         };
 
-        this.chaseSpeedMultiplier = 0.8;
         this.state = 'ROAMING';
         this.roamTargetPosition = null;
         this.roamRadius = this.roamingConfig.radius;
@@ -230,7 +229,7 @@ class Enemy {
                 break;
             case 'CHASING':
                 this._toPlayer.normalize();
-                this.velocity.copy(this._toPlayer).multiplyScalar(this.speed * this.chaseSpeedMultiplier * clampedDeltaTime);
+                this.velocity.copy(this._toPlayer).multiplyScalar(this.speed * clampedDeltaTime);
                 this.tryMove(this.velocity);
                 this.updateRotation(this._toPlayer);
                 break;

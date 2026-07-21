@@ -625,6 +625,9 @@ class UI {
 
     updateAmmoCounter(currentAmmo, maxAmmo) {
         if (!this.ammoCounter) return;
+        // Don't overwrite reload progress or READY! message
+        if (this.game.weapon && this.game.weapon.isReloading) return;
+        if (this._showingReady) return;
         if (this.ammoCounter) {
             // Show special message if out of ammo
             if (currentAmmo <= 0) {
@@ -766,13 +769,26 @@ class UI {
                 this.ammoCounter.removeChild(progressPercent);
             }
             
-            // Add a brief "READY!" message
+            // Cancel any pending READY timer
+            if (this._readyTimeoutId) {
+                clearTimeout(this._readyTimeoutId);
+                this._readyTimeoutId = null;
+            }
+            this._showingReady = false;
+
+            // Clean up inline animation properties
+            this.ammoCounter.style.removeProperty('--reload-time');
+            this.ammoCounter.style.removeProperty('animation-duration');
+
+            // Show READY! for 800ms, then update to real count
             this.ammoCounter.textContent = 'READY!';
             this.ammoCounter.classList.add('ready');
+            this._showingReady = true;
             
-            // Update ammo counter with the new full ammo value after a short delay
-            setTimeout(() => {
+            this._readyTimeoutId = setTimeout(() => {
                 this.ammoCounter.classList.remove('ready');
+                this._showingReady = false;
+                this._readyTimeoutId = null;
                 if (this.game.weapon) {
                     this.updateAmmoCounter(this.game.weapon.ammo, this.game.weapon.maxAmmo);
                 }
@@ -855,7 +871,13 @@ class UI {
         this.hideAllMenus();
         this.hideGameplayUI();
         
-        // Reset UI state
+        // Clear any leftover reload/ready state immediately
+        if (this._readyTimeoutId) {
+            clearTimeout(this._readyTimeoutId);
+            this._readyTimeoutId = null;
+        }
+        this._showingReady = false;
+
         if (this.healthBar) {
             this.updateHealthBar(100, 100);
         }
@@ -866,7 +888,7 @@ class UI {
         
         if (this.ammoCounter) {
             this.updateAmmoCounter(30, 30);
-            this.ammoCounter.classList.remove('low-ammo', 'out-of-ammo', 'reloading');
+            this.ammoCounter.classList.remove('low-ammo', 'out-of-ammo', 'reloading', 'ready');
         }
         
         if (this.crosshair) {
@@ -888,9 +910,20 @@ class UI {
             if (accuracyDisplay) accuracyDisplay.textContent = '100%';
         }
         
-        // Hide any active reload indicator
-        this.hideReloadIndicator();
-        
+        // Clean up reload/progress state without showing READY!
+        if (this._reloadAnimFrame) {
+            cancelAnimationFrame(this._reloadAnimFrame);
+            this._reloadAnimFrame = null;
+        }
+        if (this._pulseInterval) {
+            clearInterval(this._pulseInterval);
+            this._pulseInterval = null;
+        }
+        const progressPercent = this.ammoCounter && this.ammoCounter.querySelector('.reload-percent');
+        if (progressPercent) {
+            this.ammoCounter.removeChild(progressPercent);
+        }
+
         // Hide any active out-of-ammo warning
         const outOfAmmoWarning = document.getElementById('out-of-ammo-warning');
         if (outOfAmmoWarning) {

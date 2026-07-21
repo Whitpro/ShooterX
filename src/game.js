@@ -83,6 +83,7 @@ class GameEngine {
             this.isPaused = false;
             this.lastTime = 0;
             this._hasHadPointerLock = false;
+            this._lastLockRequestTime = 0;
             this.deltaTime = 0;
             
             // Initialize Input system
@@ -220,6 +221,7 @@ class GameEngine {
 
                 if (isLocked) {
                     _lastLockTime = now;
+                    this._hasHadPointerLock = true;
                     if (this.isPaused) {
                         debug('Auto-resuming game due to pointer lock');
                         this.resumeGame();
@@ -229,6 +231,13 @@ class GameEngine {
                     // Prevents auto-pause when browser briefly rejects pointer lock.
                     if (now - _lastLockTime < 300) {
                         debug('Ignoring rapid unlock after lock');
+                        return;
+                    }
+                    // Ignore unlock if it follows a failed lock request within 500ms.
+                    // Fixes resume-button → rejected request → auto-pause loop.
+                    if (this._lastLockRequestTime && now - this._lastLockRequestTime < 500) {
+                        debug('Ignoring unlock after rejected lock request');
+                        this._lastLockRequestTime = 0;
                         return;
                     }
                     // Skip auto-pause during first 2s after game start, or if never locked
@@ -690,6 +699,7 @@ class GameEngine {
         // Must be called synchronously within user gesture
         if (document.pointerLockElement !== document.body) {
             debug('Requesting pointer lock on resume');
+            this._lastLockRequestTime = performance.now();
             document.body.requestPointerLock();
         }
 
