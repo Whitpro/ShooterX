@@ -1,5 +1,6 @@
 import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
 import CloudSystem from './cloudsystem.js';
+import DayNightCycle from './daynightcycle.js';
 import PowerUp from './powerup.js';
 
 
@@ -381,6 +382,12 @@ class Environment {
             this.rimLight = null;
         }
 
+        // Clean up day/night cycle
+        if (this.dayNightCycle) {
+            this.dayNightCycle.dispose();
+            this.dayNightCycle = null;
+        }
+
         // Clean up cloud system
         if (this.cloudSystem) {
             this.cloudSystem.dispose();
@@ -481,6 +488,9 @@ class Environment {
         // Moving clouds with shadows
         this.cloudSystem = new CloudSystem(this.scene);
         this.cloudSystem.generate(15);
+
+        // Day/night cycle (must come after lighting is set up)
+        this.dayNightCycle = new DayNightCycle(this);
 
         // Add map boundaries
         this.createMapBoundaries();
@@ -886,6 +896,7 @@ class Environment {
         // 1. Ambient light — warm evening tone
         const ambientLight = new THREE.AmbientLight(0x603830, 0.35);
         this.scene.add(ambientLight);
+        this.ambientLight = ambientLight;
 
         // 2. Directional light (sun) — low warm sun
         const sunPosition = new THREE.Vector3(70, 150, 30);
@@ -916,11 +927,13 @@ class Environment {
         const hemiLight = new THREE.HemisphereLight(0xcc8855, 0x2a1a10, 0.6);
         hemiLight.position.set(0, 50, 0);
         this.scene.add(hemiLight);
+        this.hemiLight = hemiLight;
 
         // 4. Fill light — warm golden
         const fillLight = new THREE.PointLight(0xff8844, 0.5, 80);
         fillLight.position.set(0, 15, 0);
         this.scene.add(fillLight);
+        this.fillLight = fillLight;
 
         // 5. Rim backlight — warm edge highlight
         const rimLight = new THREE.DirectionalLight(0xff6633, 0.2);
@@ -1213,6 +1226,11 @@ class Environment {
     }
 
     updateAnimatedBarrierWall(deltaTime, playerPosition = null) {
+        // Advance day/night cycle (before shadow frustum so light pos is current)
+        if (this.dayNightCycle) {
+            this.dayNightCycle.update(deltaTime);
+        }
+
         // Drift clouds
         if (this.cloudSystem) {
             this.cloudSystem.update(deltaTime);
