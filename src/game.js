@@ -254,11 +254,16 @@ class GameEngine {
             // Handle escape key globally
             // Using a separate event listener to ensure it's always captured
             document.addEventListener('keydown', (event) => {
-                // Only handle Escape key when game is actively playing (not already paused)
-                if (event.key === 'Escape' && this.state === GAME_STATES.PLAYING && !this.isPaused) {
+                if (event.key === 'Escape' && this.state === GAME_STATES.PLAYING) {
                     event.preventDefault();
-                    debug('ESC key pressed - pausing game');
-                    this.pauseGame();
+                    if (this.isPaused) {
+                        debug('ESC key pressed - resuming game');
+                        this.resumeGame();
+                        document.body.requestPointerLock();
+                    } else {
+                        debug('ESC key pressed - pausing game');
+                        this.pauseGame();
+                    }
                 }
             }, true);
 
