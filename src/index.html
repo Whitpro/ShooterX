@@ -416,84 +416,66 @@
 
         /* Improved Pause Menu */
         #pauseMenu {
-            background: rgba(0, 0, 0, 0.85);
-            border: 2px solid rgba(0, 200, 255, 0.3);
-            box-shadow: 0 0 40px rgba(0, 200, 255, 0.4);
-            backdrop-filter: blur(15px);
-            padding: 40px 30px;
-            border-radius: 15px;
-            width: 400px;
+            background: rgba(10, 10, 18, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            padding: 50px 44px;
+            border-radius: 14px;
+            width: 480px;
         }
         #pauseMenu h1 {
-            font-size: 60px;
-            margin-bottom: 35px;
+            font-size: 64px;
+            margin-bottom: 36px;
             color: #fff;
-            text-shadow: 0 0 15px rgba(0, 200, 255, 0.9);
-            letter-spacing: 8px;
-            animation: glowText 2s infinite alternate;
-        }
-        @keyframes glowText {
-            from { text-shadow: 0 0 15px rgba(0, 200, 255, 0.7); }
-            to { text-shadow: 0 0 25px rgba(0, 200, 255, 1); }
+            letter-spacing: 5px;
         }
         #pauseMenu button {
-            margin: 15px auto;
-            width: 280px;
-            padding: 18px 30px;
+            margin: 14px auto;
+            width: 320px;
+            padding: 20px 30px;
             font-size: 24px;
-            transition: all 0.3s;
+            font-weight: 600;
+            transition: all 0.2s ease;
             border-radius: 8px;
             letter-spacing: 3px;
-            position: relative;
-            overflow: hidden;
-            transform: translateZ(0);
+            box-shadow: none;
         }
         #pauseMenu button:hover {
-            transform: translateY(-3px) translateZ(0);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        #pauseMenu button:active {
+            transform: translateY(1px);
         }
         #pauseMenu .resume-button {
-            background: linear-gradient(135deg, #2196F3, #0D47A1);
-            border-bottom: 4px solid #0a3880;
-            box-shadow: 0 5px 20px rgba(33, 150, 243, 0.4);
+            background: linear-gradient(135deg, #1565C0, #0D47A1);
+            color: #fff;
+            border: none;
+        }
+        #pauseMenu .resume-button:hover {
+            background: linear-gradient(135deg, #1E88E5, #1565C0);
         }
         #pauseMenu .start-button {
-            background: linear-gradient(135deg, #43A047, #1B5E20);
-            border-bottom: 4px solid #0d4413;
-            box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
+            background: linear-gradient(135deg, #43A047, #2E7D32);
+            color: #fff;
+            border: none;
+        }
+        #pauseMenu .start-button:hover {
+            background: linear-gradient(135deg, #4CAF50, #388E3C);
         }
         #pauseMenu .quit-button {
-            background: linear-gradient(135deg, #E53935, #B71C1C);
-            border-bottom: 4px solid #7f1717;
-            box-shadow: 0 5px 20px rgba(229, 57, 53, 0.4);
+            background: linear-gradient(135deg, #c62828, #8e0000);
+            color: #fff;
+            border: none;
         }
-        #pauseMenu::before {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: linear-gradient(45deg, 
-                rgba(0, 220, 255, 0.5), 
-                rgba(0, 0, 0, 0), 
-                rgba(0, 0, 0, 0), 
-                rgba(0, 220, 255, 0.5));
-            z-index: -1;
-            border-radius: 15px;
-            animation: borderGlow 4s linear infinite;
+        #pauseMenu .quit-button:hover {
+            background: linear-gradient(135deg, #e53935, #b71c1c);
         }
-        @keyframes borderGlow {
-            0% { filter: hue-rotate(0deg); }
-            100% { filter: hue-rotate(360deg); }
-        }
-
-        /* Additional styles appended at the end */
         .pause-tips {
             margin-top: 25px;
-            font-size: 16px;
-            color: rgba(255, 255, 255, 0.6);
-            font-style: italic;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.35);
+            text-align: center;
         }
 
         /* Main Menu */
@@ -640,10 +622,17 @@
             <div class="menu-content">
                 <h1>PAUSED</h1>
                 <button id="resumeButton" class="resume-button">RESUME</button>
-                <button id="pauseSettingsButton" class="menu-button">SETTINGS</button>
-                <button id="pauseMonsterInfoButton" class="menu-button">INFO</button>
                 <button id="menuButton" class="start-button">MAIN MENU</button>
                 <button id="quitPauseButton" class="quit-button">QUIT GAME</button>
+                <div class="menu-divider"></div>
+                <div class="menu-icons">
+                    <button id="pauseMonsterInfoButton" class="icon-button">
+                        <img src="../Ui stuff/info.png" alt="Info">
+                    </button>
+                    <button id="pauseSettingsButton" class="icon-button">
+                        <img src="../Ui stuff/settings.png" alt="Settings">
+                    </button>
+                </div>
                 <div class="pause-tips">Press ESC to resume</div>
             </div>
         </div>
