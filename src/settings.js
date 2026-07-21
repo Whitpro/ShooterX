@@ -245,11 +245,11 @@ class Settings {
                             <div class="setting-row">
                                 <div>
                                     <div class="setting-label">Auto Reload</div>
-                                    <div class="setting-desc">Automatically reload when empty (not yet implemented)</div>
+                                    <div class="setting-desc">Automatically reload when empty</div>
                                 </div>
                                 <div class="setting-control">
                                     <label class="toggle">
-                                        <input type="checkbox" id="autoReload" ${this.settings.autoReload ? 'checked' : ''} disabled style="opacity:0.4">
+                                        <input type="checkbox" id="autoReload" ${this.settings.autoReload ? 'checked' : ''}>
                                         <span class="slider"></span>
                                     </label>
                                 </div>
@@ -387,6 +387,14 @@ class Settings {
                 }
             };
         }
+
+        const autoReloadToggle = document.getElementById('autoReload');
+        if (autoReloadToggle) {
+            autoReloadToggle.onchange = () => {
+                this.settings.autoReload = autoReloadToggle.checked;
+                this.applyAutoReload(autoReloadToggle.checked);
+            };
+        }
     }
     
     createFpsCounter() {
@@ -482,6 +490,12 @@ class Settings {
             }
         }
     }
+
+    applyAutoReload(enabled) {
+        if (this.game && this.game.weapon) {
+            this.game.weapon.autoReload = enabled;
+        }
+    }
     
     applyFPSLock(fpsLimit) {
         if (this.game) {
@@ -503,6 +517,7 @@ class Settings {
         this.applyFPSLock(0);
         this.applyFpsCounterVisibility(this.settings.showFpsCounter);
         this.applyDayNightCycle();
+        this.applyAutoReload(this.settings.autoReload);
     }
 
     applyDayNightCycle() {
