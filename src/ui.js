@@ -27,6 +27,10 @@ class UI {
         this.crosshair = document.getElementById('crosshair');
         this.waveInfo = document.getElementById('waveInfo');
         this.scoreInfo = document.getElementById('scoreInfo');
+        this.healthBarInner = document.getElementById('healthBarInner');
+        this.staminaBarInner = document.getElementById('staminaBarInner');
+        this.healthText = document.getElementById('healthText');
+        this.staminaText = document.getElementById('staminaText');
         this.viewModeTip = null;
         this._viewModeTipTimeout = null;
 
@@ -436,6 +440,8 @@ class UI {
         if (this.crosshair) this.crosshair.style.display = 'none';
         if (this.waveInfo) this.waveInfo.style.display = 'none';
         if (this.scoreInfo) this.scoreInfo.style.display = 'none';
+        const statusPanel = document.getElementById('statusPanel');
+        if (statusPanel) statusPanel.style.display = 'none';
         this.hideViewModeTip();
     }
 
@@ -447,6 +453,8 @@ class UI {
         if (this.crosshair) this.crosshair.style.display = 'block';
         if (this.waveInfo) this.waveInfo.style.display = 'block';
         if (this.scoreInfo) this.scoreInfo.style.display = 'block';
+        const statusPanel = document.getElementById('statusPanel');
+        if (statusPanel) statusPanel.style.display = 'flex';
         this.showViewModeTip();
     }
 
@@ -619,6 +627,15 @@ class UI {
             // Apply color to pseudo-element
             this.healthBar.style.setProperty('--health-color', healthColor);
         }
+        if (this.healthBarInner) {
+            const pct = Math.min(1, Math.max(0, currentHealth / maxHealth)) * 100;
+            this.healthBarInner.style.width = pct + '%';
+            let color = 'linear-gradient(90deg, #f00, #ff5252)';
+            if (pct > 60) color = 'linear-gradient(90deg, #4CAF50, #8BC34A)';
+            else if (pct > 30) color = 'linear-gradient(90deg, #FFC107, #FF9800)';
+            this.healthBarInner.style.background = color;
+        }
+        if (this.healthText) this.healthText.textContent = Math.round(currentHealth);
     }
 
     updateStaminaBar(currentStamina, maxStamina) {
@@ -655,9 +672,20 @@ class UI {
             // Apply color to pseudo-element
             this.staminaBar.style.setProperty('--stamina-color', staminaColor);
         }
+        if (this.staminaBarInner) {
+            const pct = Math.min(1, Math.max(0, currentStamina / maxStamina)) * 100;
+            this.staminaBarInner.style.width = pct + '%';
+            let color = 'linear-gradient(90deg, #4CAF50, #8BC34A)';
+            if (pct <= 30) color = 'linear-gradient(90deg, #FF9800, #FF5722)';
+            else if (pct <= 60) color = 'linear-gradient(90deg, #CDDC39, #FFC107)';
+            this.staminaBarInner.style.background = color;
+        }
+        if (this.staminaText) this.staminaText.textContent = Math.round(currentStamina);
+        }
     }
 
     updateAmmoCounter(currentAmmo, maxAmmo) {
+        if (!this.ammoCounter) return;
         if (this.ammoCounter) {
             // Show special message if out of ammo
             if (currentAmmo <= 0) {

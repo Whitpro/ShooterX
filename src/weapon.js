@@ -370,6 +370,10 @@ class Weapon {
                 this.ammo = this.maxAmmo;
                 this.model.position.copy(this.positionOffset);
                 this.model.rotation.copy(this.rotationOffset);
+                if (window.gameEngine && window.gameEngine.ui) {
+                    window.gameEngine.ui.hideReloadIndicator();
+                    window.gameEngine.ui.updateAmmoCounter(this.ammo, this.maxAmmo);
+                }
             }
         }
     }

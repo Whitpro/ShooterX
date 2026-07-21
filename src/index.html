@@ -618,8 +618,10 @@
             <div class="menu-content">
                 <h1>SHOOTER X</h1>
                 <button id="startButton" class="start-button">START GAME</button>
+                <button id="monsterInfoButton" class="menu-button">INFO</button>
+                <button id="settingsButton" class="menu-button">SETTINGS</button>
                 <button id="quitButton" class="quit-button">QUIT GAME</button>
-                <div class="version-info">v1.2.8</div>
+                <div class="version-info">v1.3.0</div>
             </div>
         </div>
 
@@ -628,6 +630,8 @@
             <div class="menu-content">
                 <h1>PAUSED</h1>
                 <button id="resumeButton" class="resume-button">RESUME</button>
+                <button id="pauseMonsterInfoButton" class="menu-button">INFO</button>
+                <button id="pauseSettingsButton" class="menu-button">SETTINGS</button>
                 <button id="menuButton" class="start-button">MAIN MENU</button>
                 <button id="quitPauseButton" class="quit-button">QUIT GAME</button>
                 <div class="pause-tips">Press ESC to resume</div>
@@ -664,10 +668,22 @@
                 display: none;
                 pointer-events: none;
             "></div>
-            <div id="healthBar">
+            <div id="statusPanel">
+                <div class="status-item">
+                    <span class="status-icon">&#9829;</span>
+                    <div class="status-bar-container"><div class="status-bar" id="healthBarInner"></div></div>
+                    <span class="status-text" id="healthText">100</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-icon">&#9889;</span>
+                    <div class="status-bar-container"><div class="status-bar" id="staminaBarInner"></div></div>
+                    <span class="status-text" id="staminaText">100</span>
+                </div>
+            </div>
+            <div id="healthBar" style="display:none;">
                 <div id="healthBarText">100/100</div>
             </div>
-            <div id="staminaBar"></div>
+            <div id="staminaBar" style="display:none;"></div>
             <div id="ammoCounter">30 / 30</div>
             <div id="crosshair">
                 <div class="dot"></div>
@@ -679,6 +695,17 @@
                 Accuracy: <span class="bonus">100%</span>
             </div>
         </div>
+        
+        <style>
+            #statusPanel { position:absolute; bottom:30px; left:30px; display:flex; flex-direction:column; gap:6px; z-index:1001; pointer-events:none; }
+            .status-item { display:flex; align-items:center; gap:8px; }
+            .status-icon { color:#fff; font-size:18px; width:20px; text-align:center; text-shadow:0 0 6px rgba(0,0,0,0.8); }
+            .status-bar-container { width:180px; height:8px; background:rgba(0,0,0,0.5); border-radius:4px; overflow:hidden; border:1px solid rgba(255,255,255,0.15); }
+            .status-bar { height:100%; width:100%; border-radius:4px; transition:width 0.25s ease; }
+            #healthBarInner { background:linear-gradient(90deg,#4CAF50,#8BC34A); }
+            #staminaBarInner { background:linear-gradient(90deg,#2196F3,#64B5F6); }
+            .status-text { color:#fff; font-size:13px; font-weight:600; min-width:28px; text-shadow:0 0 4px rgba(0,0,0,0.8); }
+        </style>
     </div>
 
     <!-- Load game scripts -->

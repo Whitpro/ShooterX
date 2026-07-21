@@ -398,7 +398,7 @@ class BugReport {
     collectSystemInfo() {
         const info = {
             userAgent: navigator.userAgent,
-            gameVersion: 'ShooterX v1.2.8',
+            gameVersion: 'ShooterX v1.3.0',
             platform: navigator.platform,
             timestamp: new Date().toISOString()
         };

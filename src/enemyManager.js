@@ -225,7 +225,7 @@ class EnemyManager {
 
             if (window.gameEngine && window.gameEngine.waveSystem) {
                 const currentWave = window.gameEngine.waveSystem.wave;
-                this.spawnCooldown = Math.max(500, 2000 - currentWave * 300);
+                this.spawnCooldown = Math.max(400, 2000 - currentWave * 160);
             }
         }
 

@@ -2,12 +2,7 @@ import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
 import PowerUp from './powerup.js';
 
 
-// Import lighting nodes for enhanced lighting effects
-import HemisphereLightNode from '../three.js-r178/three.js-r178/src/nodes/lighting/HemisphereLightNode.js';
-import PointLightNode from '../three.js-r178/three.js-r178/src/nodes/lighting/PointLightNode.js';
-import DirectionalLightNode from '../three.js-r178/three.js-r178/src/nodes/lighting/DirectionalLightNode.js';
-import AmbientLightNode from '../three.js-r178/three.js-r178/src/nodes/lighting/AmbientLightNode.js';
-import SpotLightNode from '../three.js-r178/three.js-r178/src/nodes/lighting/SpotLightNode.js';
+// Lighting is set up using standard Three.js lights (no TSL nodes)
 
 const DEBUG = process.env.NODE_ENV === 'development';
 
@@ -826,35 +821,15 @@ class Environment {
         // More realistic, darker lighting setup
         
         // 1. Add ambient light with reduced intensity for a darker atmosphere
-        const ambientLight = new THREE.AmbientLight(0x404050, 0.4); // Darker blue-gray, reduced intensity
+        const ambientLight = new THREE.AmbientLight(0x404060, 0.45);
         this.scene.add(ambientLight);
-        
-        // Apply AmbientLightNode if available
-        try {
-            if (typeof AmbientLightNode === 'function') {
-                const ambientNode = new AmbientLightNode(ambientLight);
-                ambientLight.userData.lightNode = ambientNode;
-            }
-        } catch (e) {
-            console.warn('AmbientLightNode not fully supported:', e);
-        }
 
         // 2. Add directional light (sun) with more realistic settings
-        const sunLight = new THREE.DirectionalLight(0xffffbb, 0.8); // Warmer, less intense sunlight
+        const sunLight = new THREE.DirectionalLight(0xffeebb, 0.9);
         sunLight.position.set(50, 100, 50);
         sunLight.castShadow = true;
         
-        // Apply DirectionalLightNode if available
-        try {
-            if (typeof DirectionalLightNode === 'function') {
-                const dirLightNode = new DirectionalLightNode(sunLight);
-                sunLight.userData.lightNode = dirLightNode;
-            }
-        } catch (e) {
-            console.warn('DirectionalLightNode not fully supported:', e);
-        }
-        
-        // Improve shadow quality for more realistic shadows
+        // Improve shadow quality
         if (this.isUsingWebGPU) {
             sunLight.shadow.mapSize.width = 1024;
             sunLight.shadow.mapSize.height = 1024;
@@ -876,44 +851,21 @@ class Environment {
         this.scene.add(sunLight);
 
         // 3. Add hemisphere light with more natural sky/ground colors
-        const hemiLight = new THREE.HemisphereLight(0x6080b0, 0x3a2a20, 0.5); // Sky blue to earth brown, reduced intensity
+        const hemiLight = new THREE.HemisphereLight(0x7088c0, 0x3a2a20, 0.55);
         hemiLight.position.set(0, 50, 0);
-        
-        // Apply HemisphereLightNode if available
-        try {
-            if (typeof HemisphereLightNode === 'function') {
-                const hemiNode = new HemisphereLightNode(hemiLight);
-                hemiLight.userData.lightNode = hemiNode;
-            }
-        } catch (e) {
-            console.warn('HemisphereLightNode not fully supported:', e);
-        }
-        
         this.scene.add(hemiLight);
 
-        // Add a subtle fill light to prevent areas from being too dark
-        const fillLight = this.createPointLight(0, 15, 0, 0xd0d0c0, 70, 0.3); // Subtle warm fill light
+        // 4. Add a subtle fill light to prevent areas from being too dark
+        const fillLight = new THREE.PointLight(0xd0d0c0, 0.35, 80);
+        fillLight.position.set(0, 15, 0);
         fillLight.castShadow = false;
+        this.scene.add(fillLight);
     }
 
     createPointLight(x, y, z, color, distance, intensity) {
-        // Create a more subtle point light
         const light = new THREE.PointLight(color, intensity, distance);
         light.position.set(x, y, z);
-        
-        // Disable shadows for point lights to improve performance
         light.castShadow = false;
-        
-        // Apply PointLightNode if available
-        try {
-            if (typeof PointLightNode === 'function') {
-                const lightNode = new PointLightNode(light);
-                light.userData.lightNode = lightNode;
-            }
-        } catch (e) {
-            console.warn('PointLightNode not fully supported:', e);
-        }
-        
         this.scene.add(light);
         return light;
     }

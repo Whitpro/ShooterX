@@ -175,7 +175,7 @@ class Console {
         document.addEventListener('keydown', (e) => {
             if (e.key === '/' && !this.isVisible) {
                 e.preventDefault();
-                this.show();
+                this.showDisabledToast();
             } else if (e.key === '.' && this.isVisible) {
                 this.hide();
             }
@@ -385,6 +385,14 @@ class Console {
         }
     }
 
+    showDisabledToast() {
+        const toast = document.createElement('div');
+        toast.textContent = 'Console disabled in this build';
+        toast.style.cssText = 'position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#ff5252;padding:10px 24px;border-radius:8px;font-family:Rajdhani,sans-serif;font-size:18px;z-index:9999;border:1px solid #ff5252;transition:opacity 0.3s;';
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 2500);
+    }
+
     executeCommand(input) {
         if (!input.trim()) return;
 
@@ -456,7 +464,7 @@ class Console {
     }
 
     showVersion() {
-        this.log('ShooterX v1.2.8');
+        this.log('ShooterX v1.3.0');
     }
 
     showFPS() {

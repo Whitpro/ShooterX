@@ -381,7 +381,7 @@ class GameEngine {
             }
             
             // Start game loop
-            this.lastTime = performance.now();
+            this.lastTime = performance.now() / 1000;
             debug('Starting game loop');
             this.animationFrameId = requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
             
