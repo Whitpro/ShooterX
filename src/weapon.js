@@ -39,6 +39,7 @@ class Weapon {
         this.ammo = 30;
         this.maxAmmo = typeof maxAmmo === 'number' ? maxAmmo : 30;
         this.infiniteAmmo = false;
+        this.autoReload = false;
 
         this.isReloading = false;
         this.reloadTime = 2000;
@@ -199,6 +200,10 @@ class Weapon {
 
         if (!this.infiniteAmmo) {
             this.ammo--;
+            // Auto-reload when ammo hits 0
+            if (this.ammo <= 0 && this.autoReload) {
+                this.reload();
+            }
         }
         this.lastShot = currentTime;
 
