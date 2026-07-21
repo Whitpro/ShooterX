@@ -28,6 +28,7 @@ class Player {
         this.healthRegenLimit = 50; // Health regeneration stops at this value
         this.mouseSensitivity = 0.002; // Sensitivity for first-person camera
         this.isPointerLocked = false;
+        this._ignoreMouseMove = false;
         this.isPaused = false;
         this.isGodMode = false;
         this.infiniteJump = false;
@@ -240,21 +241,13 @@ class Player {
     }
     
     setupPointerLock() {
-        // Add click handler to request pointer lock
+        // Click handler to request pointer lock during gameplay
         document.addEventListener('click', () => {
-            if (window.isBugReportOpen) return; // Prevent pointer lock if bug report is open
-            if (window.isInSettingsMenu) return; // Prevent pointer lock if settings menu is open
-            if (window.isConsoleOpen) return; // Prevent pointer lock if console is open
-            
-            // Request pointer lock in first-person and third-person modes when not paused
-            if (!this.isPointerLocked && !this.isPaused && 
-                (this.viewMode === 'firstPerson' || this.viewMode === 'thirdPerson')) {
+            if (window.isBugReportOpen || window.isInSettingsMenu || window.isConsoleOpen) return;
+            const game = window.gameEngine;
+            if (!game || game.isPaused || !game.isRunning) return;
+            if (!this.isPointerLocked) {
                 document.body.requestPointerLock();
-                
-                // If game has a _preventAutoPause flag, clear it when player explicitly requests pointer lock
-                if (window.gameEngine && window.gameEngine._preventAutoPause) {
-                    window.gameEngine._preventAutoPause = false;
-                }
             }
         });
         
@@ -280,9 +273,10 @@ class Player {
             
             if (this.isPointerLocked) {
                 document.body.style.cursor = 'none';
-                // Reset movement buffer on pointer lock
+                // Reset movement buffer and ignore accumulated mouse movement
                 this.movementBuffer = [];
                 this.lastDelta = { x: 0, y: 0 };
+                this._ignoreMouseMove = true;
             } else {
                 document.body.style.cursor = 'default';
             }
@@ -295,6 +289,11 @@ class Player {
             
             if (this.isPointerLocked && 
                 (this.viewMode === 'firstPerson' || this.viewMode === 'thirdPerson')) {
+                // Ignore first mousemove after pointer lock (accumulated cursor jump)
+                if (this._ignoreMouseMove) {
+                    this._ignoreMouseMove = false;
+                    return;
+                }
                 // Get mouse movement with safety checks
                 const movementX = event.movementX || 0;
                 const movementY = event.movementY || 0;
@@ -874,6 +873,7 @@ class Player {
         // Reset state
         this.isPointerLocked = false;
         this.isPaused = false;
+        this._ignoreMouseMove = false;
         
         // Reset view mode to first person
         this.viewMode = 'firstPerson';

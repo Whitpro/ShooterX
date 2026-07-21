@@ -138,64 +138,6 @@ class UI {
             this.showMainMenu();
         }
 
-        // Add Monster Info button to main menu (move it above Start Game)
-        this.monsterInfoButton = document.createElement('button');
-        this.monsterInfoButton.id = 'monsterInfoButton';
-        this.monsterInfoButton.className = 'menu-button';
-        this.monsterInfoButton.textContent = 'Info';
-        const mainMenuContent = this.mainMenu.querySelector('.menu-content');
-        const mainMenuFirstButton = mainMenuContent.querySelector('button');
-        mainMenuContent.insertBefore(this.monsterInfoButton, mainMenuFirstButton);
-        // Force purple background and white text
-        this.monsterInfoButton.style.background = 'linear-gradient(135deg, #a259ff, #6a1b9a)';
-        this.monsterInfoButton.style.color = '#fff';
-        this.monsterInfoButton.onclick = () => {
-            this.showMonsterInfoScreen();
-        };
-
-        // Add Monster Info button to pause menu (move it above Resume)
-        this.pauseMonsterInfoButton = document.createElement('button');
-        this.pauseMonsterInfoButton.id = 'pauseMonsterInfoButton';
-        this.pauseMonsterInfoButton.className = 'menu-button';
-        this.pauseMonsterInfoButton.textContent = 'Info';
-        const pauseMenuContent = this.pauseMenu.querySelector('.menu-content');
-        const pauseMenuFirstButton = pauseMenuContent.querySelector('button');
-        pauseMenuContent.insertBefore(this.pauseMonsterInfoButton, pauseMenuFirstButton);
-        // Force purple background and white text
-        this.pauseMonsterInfoButton.style.background = 'linear-gradient(135deg, #a259ff, #6a1b9a)';
-        this.pauseMonsterInfoButton.style.color = '#fff';
-        this.pauseMonsterInfoButton.onclick = () => {
-            this.showMonsterInfoScreen();
-        };
-
-        // Add Settings button to main menu
-        this.settingsButton = document.createElement('button');
-        this.settingsButton.id = 'settingsButton';
-        this.settingsButton.className = 'menu-button';
-        this.settingsButton.textContent = 'Settings';
-        // Insert settings button after the monster info button
-        mainMenuContent.insertBefore(this.settingsButton, this.monsterInfoButton.nextSibling);
-        // Force blue background and white text
-        this.settingsButton.style.background = 'linear-gradient(135deg, #2196F3, #0D47A1)';
-        this.settingsButton.style.color = '#fff';
-        this.settingsButton.onclick = () => {
-            this.showSettingsScreen();
-        };
-
-        // Add Settings button to pause menu
-        this.pauseSettingsButton = document.createElement('button');
-        this.pauseSettingsButton.id = 'pauseSettingsButton';
-        this.pauseSettingsButton.className = 'menu-button';
-        this.pauseSettingsButton.textContent = 'Settings';
-        // Insert settings button after the monster info button
-        pauseMenuContent.insertBefore(this.pauseSettingsButton, this.pauseMonsterInfoButton.nextSibling);
-        // Force blue background and white text
-        this.pauseSettingsButton.style.background = 'linear-gradient(135deg, #2196F3, #0D47A1)';
-        this.pauseSettingsButton.style.color = '#fff';
-        this.pauseSettingsButton.onclick = () => {
-            this.showSettingsScreen();
-        };
-
         // Create Monster Info screen (hidden by default)
         this.monsterInfoScreen = document.createElement('div');
         this.monsterInfoScreen.id = 'monsterInfoScreen';
@@ -304,18 +246,8 @@ class UI {
         if (startButton) {
             startButton.onclick = () => {
                 console.log('Start button clicked');
-                // Hide the main menu first
                 this.hideMainMenu();
-                
-                // Ensure auto-pause prevention is active
-                if (this.game) {
-                    this.game._preventAutoPause = true;
-                }
-                
-                // Start the game directly, which will show the gameplay UI
                 this.game.startGame();
-                
-                // Request pointer lock
                 document.body.requestPointerLock();
             };
         }
@@ -325,17 +257,7 @@ class UI {
         if (resumeButton) {
             resumeButton.onclick = () => {
                 console.log('Resume button clicked');
-                this.hidePauseMenu();
                 this.game.resumeGame();
-                
-                // Add a small delay before requesting pointer lock
-                // This gives the browser time to process the button click event
-                setTimeout(() => {
-                    if (document.pointerLockElement !== document.body) {
-                        console.log('Requesting pointer lock after resume');
-                        document.body.requestPointerLock();
-                    }
-                }, 100);
             };
         }
 
@@ -407,21 +329,33 @@ class UI {
             };
         }
 
-        // Monster Info button event handlers
-        if (this.monsterInfoButton) {
-            this.monsterInfoButton.onclick = () => {
-                this.showMonsterInfoScreen();
-            };
+        // Info button event handlers
+        const infoButton = document.getElementById('monsterInfoButton');
+        if (infoButton) {
+            infoButton.onclick = () => this.showMonsterInfoScreen();
         }
-        if (this.pauseMonsterInfoButton) {
-            this.pauseMonsterInfoButton.onclick = () => {
-                this.showMonsterInfoScreen();
-            };
+        const pauseInfoButton = document.getElementById('pauseMonsterInfoButton');
+        if (pauseInfoButton) {
+            pauseInfoButton.onclick = () => this.showMonsterInfoScreen();
+        }
+
+        // Settings button event handlers
+        const settingsBtn = document.getElementById('settingsButton');
+        if (settingsBtn) {
+            settingsBtn.onclick = () => this.showSettingsScreen();
+        }
+        const pauseSettingsBtn = document.getElementById('pauseSettingsButton');
+        if (pauseSettingsBtn) {
+            pauseSettingsBtn.onclick = () => this.showSettingsScreen();
         }
     }
 
     hideAllMenus() {
         console.log('Hiding all menus');
+        if (this._pauseMenuHideTimeout) {
+            clearTimeout(this._pauseMenuHideTimeout);
+            this._pauseMenuHideTimeout = null;
+        }
         if (this.mainMenu) this.mainMenu.style.display = 'none';
         if (this.pauseMenu) this.pauseMenu.style.display = 'none';
         if (this.gameOverScreen) this.gameOverScreen.style.display = 'none';
@@ -507,6 +441,11 @@ class UI {
     showPauseMenu() {
         console.log('Showing pause menu');
         if (this.pauseMenu) {
+            // Cancel any pending hide timeout from a previous hidePauseMenu
+            if (this._pauseMenuHideTimeout) {
+                clearTimeout(this._pauseMenuHideTimeout);
+                this._pauseMenuHideTimeout = null;
+            }
             // Ensure we set display: flex for proper layout
             this.pauseMenu.style.display = 'flex';
             
@@ -531,8 +470,9 @@ class UI {
             // Remove visible class first to trigger animation
             this.pauseMenu.classList.remove('visible');
             // Then hide after animation completes
-            setTimeout(() => {
+            this._pauseMenuHideTimeout = setTimeout(() => {
                 this.pauseMenu.style.display = 'none';
+                this._pauseMenuHideTimeout = null;
             }, 400); // Match animation duration
         }
     }
@@ -681,7 +621,6 @@ class UI {
             this.staminaBarInner.style.background = color;
         }
         if (this.staminaText) this.staminaText.textContent = Math.round(currentStamina);
-        }
     }
 
     updateAmmoCounter(currentAmmo, maxAmmo) {

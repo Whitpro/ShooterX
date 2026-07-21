@@ -120,6 +120,24 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
         }
+        #monsterInfoButton, #pauseMonsterInfoButton { 
+            background: linear-gradient(135deg, #a259ff, #6a1b9a); 
+            border-bottom: 3px solid #4a148c;
+        }
+        #monsterInfoButton:hover, #pauseMonsterInfoButton:hover { 
+            background: linear-gradient(135deg, #9c4dff, #5c1790);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(162, 89, 255, 0.4);
+        }
+        #settingsButton, #pauseSettingsButton { 
+            background: linear-gradient(135deg, #2196F3, #0D47A1); 
+            border-bottom: 3px solid #0D47A1;
+        }
+        #settingsButton:hover, #pauseSettingsButton:hover { 
+            background: linear-gradient(135deg, #1E88E5, #0D47A1);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
 
         /* CSS Variables */
         :root {
@@ -630,8 +648,8 @@
             <div class="menu-content">
                 <h1>PAUSED</h1>
                 <button id="resumeButton" class="resume-button">RESUME</button>
-                <button id="pauseMonsterInfoButton" class="menu-button">INFO</button>
                 <button id="pauseSettingsButton" class="menu-button">SETTINGS</button>
+                <button id="pauseMonsterInfoButton" class="menu-button">INFO</button>
                 <button id="menuButton" class="start-button">MAIN MENU</button>
                 <button id="quitPauseButton" class="quit-button">QUIT GAME</button>
                 <div class="pause-tips">Press ESC to resume</div>
@@ -680,10 +698,6 @@
                     <span class="status-text" id="staminaText">100</span>
                 </div>
             </div>
-            <div id="healthBar" style="display:none;">
-                <div id="healthBarText">100/100</div>
-            </div>
-            <div id="staminaBar" style="display:none;"></div>
             <div id="ammoCounter">30 / 30</div>
             <div id="crosshair">
                 <div class="dot"></div>
@@ -697,14 +711,14 @@
         </div>
         
         <style>
-            #statusPanel { position:absolute; bottom:30px; left:30px; display:flex; flex-direction:column; gap:6px; z-index:1001; pointer-events:none; }
-            .status-item { display:flex; align-items:center; gap:8px; }
-            .status-icon { color:#fff; font-size:18px; width:20px; text-align:center; text-shadow:0 0 6px rgba(0,0,0,0.8); }
-            .status-bar-container { width:180px; height:8px; background:rgba(0,0,0,0.5); border-radius:4px; overflow:hidden; border:1px solid rgba(255,255,255,0.15); }
-            .status-bar { height:100%; width:100%; border-radius:4px; transition:width 0.25s ease; }
+            #statusPanel { position:absolute; bottom:30px; left:30px; display:flex; flex-direction:column; gap:10px; z-index:1001; pointer-events:none; background:rgba(0,0,0,0.4); border-radius:10px; padding:12px 16px; backdrop-filter:blur(5px); border-left:4px solid rgba(0,255,255,0.5); box-shadow:0 0 20px rgba(0,0,0,0.5); min-width:220px; }
+            .status-item { display:flex; align-items:center; gap:10px; }
+            .status-icon { color:#fff; font-size:16px; width:22px; text-align:center; text-shadow:0 0 6px rgba(0,0,0,0.8); }
+            .status-bar-container { flex:1; height:10px; background:rgba(0,0,0,0.6); border-radius:5px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); }
+            .status-bar { height:100%; border-radius:5px; transition:width 0.25s ease; }
             #healthBarInner { background:linear-gradient(90deg,#4CAF50,#8BC34A); }
             #staminaBarInner { background:linear-gradient(90deg,#2196F3,#64B5F6); }
-            .status-text { color:#fff; font-size:13px; font-weight:600; min-width:28px; text-shadow:0 0 4px rgba(0,0,0,0.8); }
+            .status-text { color:#fff; font-size:14px; font-weight:600; min-width:30px; text-align:right; text-shadow:0 0 4px rgba(0,0,0,0.9); }
         </style>
     </div>
 
