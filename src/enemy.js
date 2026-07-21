@@ -81,6 +81,22 @@ class Enemy {
         return new THREE.CanvasTexture(canvas);
     }
 
+    _makeGlowSpriteMap() {
+        const c = document.createElement('canvas');
+        c.width = 64;
+        c.height = 64;
+        const ctx = c.getContext('2d');
+        const half = 32;
+        const g = ctx.createRadialGradient(half, half, 0, half, half, half);
+        g.addColorStop(0, 'rgba(255, 180, 80, 0.9)');
+        g.addColorStop(0.3, 'rgba(255, 140, 50, 0.4)');
+        g.addColorStop(0.6, 'rgba(200, 100, 30, 0.1)');
+        g.addColorStop(1, 'rgba(150, 70, 20, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, 64, 64);
+        return new THREE.CanvasTexture(c);
+    }
+
     createModel() {
         this.model = createEnemyMesh(this.type.toUpperCase());
         if (!this.model) return;
@@ -93,16 +109,30 @@ class Enemy {
         this.model.userData.enemy = this;
         this.scene.add(this.model);
 
-        // Foot glow — emissive sphere (cheaper than PointLight)
-        const glowGeo = new THREE.SphereGeometry(0.18, 6, 6);
+        // Foot glow — emissive sphere + sprite (cheaper than PointLight)
+        const glowGeo = new THREE.SphereGeometry(0.3, 8, 8);
         const glowMat = new THREE.MeshBasicMaterial({
-            color: 0xffaa44,
+            color: 0xff8833,
             transparent: true,
             opacity: 0,
         });
         this.footGlow = new THREE.Mesh(glowGeo, glowMat);
         this.footGlow.position.set(0, 0.05, 0);
         this.model.add(this.footGlow);
+
+        // Glow sprite for visible light cone on the ground
+        const spriteMap = this._makeGlowSpriteMap();
+        const spriteMat = new THREE.SpriteMaterial({
+            map: spriteMap,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            opacity: 0,
+        });
+        this.footGlowSprite = new THREE.Sprite(spriteMat);
+        this.footGlowSprite.position.set(0, 0.02, 0);
+        this.footGlowSprite.scale.set(1.6, 1.6, 1);
+        this.model.add(this.footGlowSprite);
 
         const barWidth = Math.min(2.0, Math.max(1.2, config.health / 80));
         const barHeight = 0.25;
@@ -424,8 +454,12 @@ class Enemy {
     }
 
     setFootLightIntensity(value) {
+        const v = Math.min(value, 1);
         if (this.footGlow) {
-            this.footGlow.material.opacity = value * 0.5;
+            this.footGlow.material.opacity = v * 0.8;
+        }
+        if (this.footGlowSprite) {
+            this.footGlowSprite.material.opacity = v * 0.6;
         }
     }
 
@@ -463,6 +497,7 @@ class Enemy {
 
         this.model = null;
         this.footGlow = null;
+        this.footGlowSprite = null;
         this.healthBarContainer = null;
         this.healthBarBackground = null;
         this.healthBarForeground = null;

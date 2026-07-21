@@ -547,7 +547,7 @@ class GameEngine {
             // Update foot lights based on darkness
             if (this.environment && this.environment.dayNightCycle) {
                 const darkness = this.environment.dayNightCycle.getDarkness();
-                const intensity = darkness * darkness * 3;
+                const intensity = darkness * darkness * 5;
                 if (this.player) {
                     this.player.setFootLightIntensity(intensity);
                 }
