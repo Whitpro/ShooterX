@@ -118,6 +118,7 @@ class Enemy {
         });
         this.footGlow = new THREE.Mesh(glowGeo, glowMat);
         this.footGlow.position.set(0, 0.05, 0);
+        this.footGlow.raycast = () => {}; // Don't block bullets
         this.model.add(this.footGlow);
 
         // Glow sprite for visible light cone on the ground
@@ -132,6 +133,7 @@ class Enemy {
         this.footGlowSprite = new THREE.Sprite(spriteMat);
         this.footGlowSprite.position.set(0, 0.02, 0);
         this.footGlowSprite.scale.set(1.6, 1.6, 1);
+        this.footGlowSprite.raycast = () => {};
         this.model.add(this.footGlowSprite);
 
         const barWidth = Math.min(2.0, Math.max(1.2, config.health / 80));
