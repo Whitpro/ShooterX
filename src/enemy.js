@@ -654,7 +654,6 @@ class EnemyManager {
         this.maxEnemies = 100;
 
         this.spawnQueue = [];
-        this.isSpawning = false;
         this.spawnPoints = [];
         this.spawnPointCooldown = 5000;
         this.spawnPointLastUse = new Map();
@@ -729,7 +728,7 @@ class EnemyManager {
 
         const typeConfig = ENEMY_TYPES[type];
         if (!typeConfig) return;
-        if (type === 'BOSS' || type === 'COMMANDER') return;
+        if (type.toUpperCase() === 'BOSS' || type.toUpperCase() === 'COMMANDER') return;
 
         let groupProbability = 0;
         switch (type) {
@@ -868,16 +867,6 @@ class EnemyManager {
             }
         }
 
-        if (
-            this.spawnQueue.length === 0 &&
-            window.gameEngine &&
-            window.gameEngine.waveSystem &&
-            window.gameEngine.waveSystem.isSpawning
-        ) {
-            window.gameEngine.waveSystem.isSpawning = false;
-            console.log('All enemies spawned, notifying wave system');
-        }
-
         for (const enemy of this.enemies) {
             if (enemy && enemy.isAlive) {
                 enemy.update(deltaTime, window.gameEngine?.player);
@@ -897,7 +886,7 @@ class EnemyManager {
 
                 for (const other of this.enemies) {
                     if (other === commander || !other || !other.isAlive) continue;
-                    if (other.type === 'COMMANDER' || other.type === 'BOSS') continue;
+                    if (other.type.toUpperCase() === 'COMMANDER' || other.type.toUpperCase() === 'BOSS') continue;
                     if (other.state === 'WINDUP' || other.state === 'ATTACKING') continue;
                     if (other.position.distanceTo(commander.position) > commandRadius) continue;
                     other.state = 'CHASING';
@@ -934,6 +923,18 @@ class EnemyManager {
 
     handleHit(enemy, damage) {
         if (!enemy || !enemy.isAlive) return false;
+
+        // Delegate boss hits to BossFight (handles shield + phases)
+        if (enemy.type.toUpperCase() === 'BOSS' && enemy._bossFight) {
+            const killed = enemy._bossFight.handleHit(damage);
+            if (killed && window.gameEngine && window.gameEngine.waveSystem) {
+                window.gameEngine.waveSystem.onEnemyKill(enemy.type);
+                if (window.gameEngine.ui) {
+                    window.gameEngine.ui.updateScore(window.gameEngine.waveSystem.getCurrentState());
+                }
+            }
+            return killed;
+        }
 
         const killed = enemy.takeDamage(damage);
         if (!killed) {

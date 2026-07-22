@@ -32,7 +32,7 @@ const ENEMY_TYPES = {
         damage: 8,
         attackRange: 0.9,
         roamSpeed: 5.5,
-        chaseSpeed: 6.0,
+        chaseSpeed: 5.0,
         attackWindup: 400,
 
         detectionRange: 24,
@@ -91,21 +91,24 @@ const ENEMY_TYPES = {
     },
 
     BOSS: {
-        health: 500,
-        damage: 30,
+        health: 800,
+        damage: 25,
         attackRange: 9,
         roamSpeed: 1.65,
         chaseSpeed: 3.0,
         attackWindup: 1000,
+        knockback: 8,
+        commandRadius: 15,
 
         detectionRange: 35,
         attackDelay: 1500,
-        points: 500,
-        model: { radius: 0.52, height: 2.8, segments: 8, color: 0xFF9800, emissive: 0x600000, shininess: 100 },
+        points: 2000,
+        model: { radius: 0.52, height: 2.8, segments: 8, color: 0xFF6600, emissive: 0x992200, shininess: 100 },
         behavior: {
-            pursueChance: 0.3,
+            pursueChance: 0.4,
             strafeChance: 0.4,
-            suppressChance: 0.3,
+            suppressChance: 0.2,
+            combatStrafe: 0.3,
             roaming: { radius: 25, changeTimeMin: 4000, changeTimeMax: 9000 }
         }
     }

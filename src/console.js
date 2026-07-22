@@ -1,7 +1,6 @@
 // Import BugReport module
 import BugReport from './bugReport.js';
 import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
-import { ENEMY_TYPES } from './enemyTypes.js';
 
 // Admin login config — edit users/passwords here
 const ADMIN_CONFIG = {
@@ -649,6 +648,12 @@ class Console {
         }
         this.hide();
 
+        // Pause game for admin panel
+        if (this.game && this.game.isRunning && !this.game.isPaused) {
+            this.game.pauseGame();
+            this._pausedForAdmin = true;
+        }
+
         if (this._adminPanel) {
             this._adminPanel.remove();
         }
@@ -822,11 +827,16 @@ class Console {
         panel.remove();
         this._adminPanel = null;
         document.removeEventListener('keydown', this._adminPanelKeyHandler);
-        // Resume game — restore paused state
+        // Resume game if we paused it for the admin panel
         if (this.game) {
-            this.game.isPaused = false;
-            if (this.game.player) {
-                this.game.player.setPaused(false);
+            if (this._pausedForAdmin) {
+                this.game.resumeGame();
+                this._pausedForAdmin = false;
+            } else {
+                this.game.isPaused = false;
+                if (this.game.player) {
+                    this.game.player.setPaused(false);
+                }
             }
         }
     }
@@ -1142,7 +1152,7 @@ class Console {
         const botCard = this._adminCard('Spawn Bot');
         const botRow = document.createElement('div');
         botRow.style.cssText = 'display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;';
-        const botTypes = ['GRUNT', 'SCOUT', 'SNIPER', 'COMMANDER', 'BOSS'];
+        const botTypes = ['GRUNT', 'SCOUT', 'SNIPER', 'COMMANDER'];
         botTypes.forEach(type => {
             const btn = document.createElement('button');
             btn.textContent = type.charAt(0) + type.slice(1).toLowerCase();
@@ -1164,6 +1174,30 @@ class Console {
         botCard.appendChild(botRow);
         frag.appendChild(botCard);
 
+        // Spawn Boss with full fight mechanics
+        const bossCard = this._adminCard('Spawn Boss');
+        const bossBtn = document.createElement('button');
+        bossBtn.textContent = 'SPAWN BOSS';
+        bossBtn.style.cssText = `
+            padding:10px 24px; background:linear-gradient(135deg,#ff6600,#992200);
+            border:1px solid rgba(255,102,0,0.4); border-radius:8px;
+            color:#fff; font-family:'Rajdhani',sans-serif; font-size:15px; font-weight:700;
+            cursor:pointer; transition:all 0.2s; letter-spacing:2px; margin-top:4px;
+        `;
+        bossBtn.onmouseenter = () => { bossBtn.style.background = 'linear-gradient(135deg,#ff8800,#bb3300)'; };
+        bossBtn.onmouseleave = () => { bossBtn.style.background = 'linear-gradient(135deg,#ff6600,#992200)'; };
+        bossBtn.onclick = () => {
+            const bf = this.game.bossFight;
+            if (!bf) return;
+            if (bf.boss && bf.boss.isAlive) {
+                this.log('Boss is already alive!', 'error');
+                return;
+            }
+            bf.start();
+        };
+        bossCard.appendChild(bossBtn);
+        frag.appendChild(bossCard);
+
         // Spawn Powerup
         const spawnCard = this._adminCard('Spawn Power-Up');
         const types = ['health', 'ammo', 'rapidfire'];
@@ -1177,6 +1211,64 @@ class Console {
             spawnCard.appendChild(btn);
         });
         frag.appendChild(spawnCard);
+
+        // Kill All Enemies
+        const killAllCard = this._adminCard('Kill All Enemies');
+        const killBtn = document.createElement('button');
+        killBtn.textContent = 'KILL ALL';
+        killBtn.style.cssText = `
+            padding:10px 24px; background:linear-gradient(135deg,#c62828,#8e0000);
+            border:1px solid rgba(255,68,68,0.4); border-radius:8px;
+            color:#fff; font-family:'Rajdhani',sans-serif; font-size:15px; font-weight:700;
+            cursor:pointer; transition:all 0.2s; letter-spacing:2px; margin-top:4px;
+        `;
+        killBtn.onmouseenter = () => { killBtn.style.background = 'linear-gradient(135deg,#e53935,#b71c1c)'; };
+        killBtn.onmouseleave = () => { killBtn.style.background = 'linear-gradient(135deg,#c62828,#8e0000)'; };
+        killBtn.onclick = () => {
+            const mgr = this.game.enemyManager;
+            if (!mgr) return;
+
+            // Kill boss first (bypasses shield — 1-shot full kill)
+            const bf = this.game.bossFight;
+            if (bf && bf.boss && bf.boss.isAlive) {
+                bf.shieldHp = 0;
+                bf._breakShield();
+                const killed = bf.handleHit(9999);
+                if (!killed) {
+                    bf.boss.health = 0;
+                    bf.boss.die();
+                    bf._onBossDefeated();
+                }
+            }
+
+            // Kill all remaining enemies
+            const enemies = [...mgr.enemies];
+            for (const enemy of enemies) {
+                if (enemy && enemy.isAlive) {
+                    mgr.handleHit(enemy, 9999);
+                }
+            }
+            mgr.spawnQueue = [];
+            mgr.spawnCooldown = 0;
+
+            // Force wave completion
+            const ws = this.game.waveSystem;
+            if (ws && ws.state === 'ACTIVE') {
+                ws.completeWave();
+            }
+
+            // Close admin panel without touching game state — completeWave() already handled it
+            const adminEl = document.getElementById('admin-panel');
+            if (adminEl) {
+                adminEl.remove();
+                this._adminPanel = null;
+                if (this._adminPanelKeyHandler) {
+                    document.removeEventListener('keydown', this._adminPanelKeyHandler);
+                }
+            }
+        };
+        killAllCard.appendChild(killBtn);
+        frag.appendChild(killAllCard);
 
         return frag;
     }

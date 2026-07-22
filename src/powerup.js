@@ -1,4 +1,4 @@
-import * as THREE from '../three.js-r178/three.js-r178/src/Three.js';
+import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
 
 class PowerUp {
     constructor(type, environment) {
@@ -86,8 +86,8 @@ class PowerUp {
         }
         if (this.type === 'health') {
             player.health = Math.min(player.maxHealth, player.health + this.effectValue);
-            if (player.scene && player.scene.ui && typeof player.scene.ui.updateHealthBar === 'function') {
-                player.scene.ui.updateHealthBar(player.health, player.maxHealth);
+            if (window.gameEngine && window.gameEngine.ui) {
+                window.gameEngine.ui.updateHealthBar(player.health, player.maxHealth);
             }
             showPowerupMessage('Picked up: Health Boost!');
         } else if (this.type === 'ammo') {
@@ -108,16 +108,16 @@ class PowerUp {
                         if (window.gameEngine.weaponMaxAmmo !== undefined) {
                             window.gameEngine.weaponMaxAmmo = 30;
                         }
-                        if (player.scene && player.scene.ui && typeof player.scene.ui.updateAmmoCounter === 'function') {
-                            player.scene.ui.updateAmmoCounter(weapon.ammo, weapon.maxAmmo);
+                        if (window.gameEngine && window.gameEngine.ui) {
+                            window.gameEngine.ui.updateAmmoCounter(weapon.ammo, weapon.maxAmmo);
                         }
                         showPowerupMessage('Ammo boost ended. Back to 30/30.');
                     }, 20000);
                 } else {
                     weapon.ammo = Math.min(weapon.maxAmmo, weapon.ammo + this.effectValue);
                 }
-                if (player.scene && player.scene.ui && typeof player.scene.ui.updateAmmoCounter === 'function') {
-                    player.scene.ui.updateAmmoCounter(weapon.ammo, weapon.maxAmmo);
+                if (window.gameEngine && window.gameEngine.ui) {
+                    window.gameEngine.ui.updateAmmoCounter(weapon.ammo, weapon.maxAmmo);
                 }
             }
             showPowerupMessage('Picked up: Ammo Refill!');

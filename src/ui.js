@@ -306,7 +306,7 @@ class UI {
             { id: 'scout', name: 'SCOUT', hp: 75, spd: 5, dmg: 8, pts: 150, range: 0.9, color: '#44ff44', desc: 'Fast-moving enemy that tries to flank and overwhelm.' },
             { id: 'sniper', name: 'SNIPER', hp: 60, spd: 3, dmg: 25, pts: 250, range: 15, color: '#ffff44', desc: 'Long-range attacker with high damage but low health.' },
             { id: 'commander', name: 'COMMANDER', hp: 175, spd: 4, dmg: 12, pts: 300, range: 7, color: '#ff44ff', desc: 'Buffs nearby enemies and coordinates group attacks.' },
-            { id: 'boss', name: 'BOSS', hp: 400, spd: 3, dmg: 30, pts: 500, range: 9, color: '#ff9800', desc: 'Extremely tough with special attacks and massive health.' }
+            { id: 'boss', name: 'BOSS', hp: 800, spd: 3, dmg: 25, pts: 2000, range: 9, color: '#ff6600', desc: 'Armored behemoth with shield phases, shockwave rings, and projectile barrages.' }
         ];
 
         const powerupData = [
@@ -934,7 +934,7 @@ class UI {
             if (waveState.state !== 'ACTIVE') {
                 waveText += ` - ${waveState.state}`;
             }
-            waveText += ` - Enemies: ${waveState.enemiesKilled}/${waveState.enemiesRequired}`;
+            waveText += ` - Remaining: ${waveState.enemiesAlive}`;
             this.waveInfo.textContent = waveText;
 
             // Update score info with formatted elements and classes
@@ -1285,6 +1285,82 @@ class UI {
             completionScreen.style.display = 'none';
             completionScreen.className = 'menu';
         }
+    }
+
+    showBossHealthBar(boss) {
+        let bar = document.getElementById('bossHealthBar');
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'bossHealthBar';
+            bar.innerHTML = `
+                <div id="bossHealthBarContainer">
+                    <div id="bossHealthBarLabel">WAVE BOSS</div>
+                    <div id="bossShieldBarOuter"><div id="bossShieldBarInner"></div></div>
+                    <div id="bossHealthBarOuter"><div id="bossHealthBarInner"></div></div>
+                </div>
+            `;
+            const style = document.createElement('style');
+            style.textContent = `
+                #bossHealthBar {
+                    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                    z-index: 900; width: 500px; max-width: 80vw;
+                    font-family: 'Rajdhani', 'Orbitron', sans-serif;
+                    display: none;
+                }
+                #bossHealthBarContainer { width: 100%; }
+                #bossHealthBarLabel {
+                    color: #ff6600; font-size: 18px; font-weight: 700;
+                    text-align: center; letter-spacing: 3px; margin-bottom: 6px;
+                    text-shadow: 0 0 10px rgba(255,102,0,0.5);
+                }
+                #bossShieldBarOuter {
+                    width: 100%; height: 12px;
+                    background: rgba(0,0,0,0.5); border-radius: 6px;
+                    border: 1px solid rgba(68,136,255,0.4); margin-bottom: 4px;
+                    overflow: hidden;
+                }
+                #bossShieldBarInner {
+                    height: 100%; width: 100%;
+                    background: linear-gradient(90deg, #4488ff, #66aaff);
+                    border-radius: 6px; transition: width 0.3s ease;
+                }
+                #bossHealthBarOuter {
+                    width: 100%; height: 18px;
+                    background: rgba(0,0,0,0.5); border-radius: 9px;
+                    border: 1px solid rgba(255,102,0,0.4); overflow: hidden;
+                }
+                #bossHealthBarInner {
+                    height: 100%; width: 100%;
+                    background: linear-gradient(90deg, #ff4400, #ff8800);
+                    border-radius: 9px; transition: width 0.3s ease;
+                }
+            `;
+            if (!document.getElementById('bossHealthBar-style')) {
+                style.id = 'bossHealthBar-style';
+                document.head.appendChild(style);
+            }
+            document.body.appendChild(bar);
+        }
+        bar.style.display = 'block';
+        this.updateBossHealthBar(300, 800);
+    }
+
+    updateBossHealthBar(shieldHp, bossHp) {
+        const shieldBar = document.getElementById('bossShieldBarInner');
+        const healthBar = document.getElementById('bossHealthBarInner');
+        if (shieldBar) {
+            const pct = (shieldHp / 300) * 100;
+            shieldBar.style.width = Math.max(0, pct) + '%';
+        }
+        if (healthBar) {
+            const pct = (bossHp / 800) * 100;
+            healthBar.style.width = Math.max(0, pct) + '%';
+        }
+    }
+
+    hideBossHealthBar() {
+        const bar = document.getElementById('bossHealthBar');
+        if (bar) bar.style.display = 'none';
     }
     
     showSettingsScreen() {

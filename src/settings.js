@@ -3,8 +3,6 @@
  * Provides UI for configuring game settings
  */
 
-import { ENEMY_TYPES } from './enemyTypes.js';
-
 // Debug logging utility
 function debug(...args) {
     if (process.env.NODE_ENV === 'development') {
