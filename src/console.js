@@ -1142,7 +1142,7 @@ class Console {
         const botCard = this._adminCard('Spawn Bot');
         const botRow = document.createElement('div');
         botRow.style.cssText = 'display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;';
-        const botTypes = ['GRUNT', 'SCOUT', 'HEAVY', 'SNIPER', 'COMMANDER', 'BOSS'];
+        const botTypes = ['GRUNT', 'SCOUT', 'SNIPER', 'COMMANDER', 'BOSS'];
         botTypes.forEach(type => {
             const btn = document.createElement('button');
             btn.textContent = type.charAt(0) + type.slice(1).toLowerCase();

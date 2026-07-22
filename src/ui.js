@@ -304,7 +304,6 @@ class UI {
         const enemyData = [
             { id: 'grunt', name: 'GRUNT', hp: 100, spd: 3.5, dmg: 10, pts: 100, range: 1.2, color: '#ff4444', desc: 'Basic enemy that slowly approaches and attacks at close range.' },
             { id: 'scout', name: 'SCOUT', hp: 75, spd: 5, dmg: 8, pts: 150, range: 0.9, color: '#44ff44', desc: 'Fast-moving enemy that tries to flank and overwhelm.' },
-            { id: 'heavy', name: 'HEAVY', hp: 200, spd: 2.5, dmg: 15, pts: 200, range: 1.8, color: '#4488ff', desc: 'Slow but tough. Absorbs heavy damage and hits hard.' },
             { id: 'sniper', name: 'SNIPER', hp: 60, spd: 3, dmg: 25, pts: 250, range: 15, color: '#ffff44', desc: 'Long-range attacker with high damage but low health.' },
             { id: 'commander', name: 'COMMANDER', hp: 175, spd: 4, dmg: 12, pts: 300, range: 7, color: '#ff44ff', desc: 'Buffs nearby enemies and coordinates group attacks.' },
             { id: 'boss', name: 'BOSS', hp: 400, spd: 3, dmg: 30, pts: 500, range: 9, color: '#ff9800', desc: 'Extremely tough with special attacks and massive health.' }

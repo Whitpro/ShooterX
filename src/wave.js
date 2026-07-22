@@ -65,24 +65,20 @@ class Wave {
             if (this.wave === 10 || this.wave >= 15) {
                 if (roll < 0.3) enemyTypes.push('GRUNT');
                 else if (roll < 0.5) enemyTypes.push('SCOUT');
-                else if (roll < 0.65) enemyTypes.push('HEAVY');
-                else if (roll < 0.8) enemyTypes.push('SNIPER');
+                else if (roll < 0.7) enemyTypes.push('SNIPER');
                 else enemyTypes.push('COMMANDER');
             } else if (this.wave >= 8) {
                 if (roll < 0.3) enemyTypes.push('GRUNT');
                 else if (roll < 0.5) enemyTypes.push('SCOUT');
-                else if (roll < 0.65) enemyTypes.push('HEAVY');
-                else if (roll < 0.8) enemyTypes.push('SNIPER');
+                else if (roll < 0.7) enemyTypes.push('SNIPER');
                 else enemyTypes.push('COMMANDER');
             } else if (this.wave >= 5) {
                 if (roll < 0.35) enemyTypes.push('GRUNT');
                 else if (roll < 0.6) enemyTypes.push('SCOUT');
-                else if (roll < 0.8) enemyTypes.push('HEAVY');
                 else enemyTypes.push('SNIPER');
             } else if (this.wave >= 3) {
                 if (roll < 0.5) enemyTypes.push('GRUNT');
-                else if (roll < 0.75) enemyTypes.push('SCOUT');
-                else enemyTypes.push('HEAVY');
+                else enemyTypes.push('SCOUT');
             } else if (this.wave === 2) {
                 enemyTypes.push(roll < 0.65 ? 'GRUNT' : 'SCOUT');
             } else {

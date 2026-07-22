@@ -33,7 +33,7 @@ class Settings {
             fpsLock: 0,
             showFpsCounter: true,
             dayNightEnabled: true,
-            lockedTimeOfDay: 14
+            lockedTimeOfDay: 12
         };
         
         this.loadSettings();
@@ -603,7 +603,7 @@ class Settings {
                 if (parsed.hideTextures !== undefined) this.settings.hideTextures = parsed.hideTextures;
                 if (parsed.showFpsCounter !== undefined) this.settings.showFpsCounter = parsed.showFpsCounter;
                 if (parsed.lockedTimeOfDay !== undefined) this.settings.lockedTimeOfDay = parsed.lockedTimeOfDay;
-                // dayNightEnabled always defaults to true
+                if (parsed.dayNightEnabled !== undefined) this.settings.dayNightEnabled = parsed.dayNightEnabled;
             }
             if (this.game) this.applyAllSettings();
         } catch (error) {

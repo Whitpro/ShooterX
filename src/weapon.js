@@ -31,9 +31,9 @@ class Weapon {
     constructor(scene, camera, maxAmmo) {
         this.scene = scene;
         this.camera = camera;
-        this.damage = 25;
-        this.fireRate = 0.5;
-        this._originalFireRate = 0.5;
+        this.damage = 20;
+        this.fireRate = 0.49;
+        this._originalFireRate = 0.4;
         this.lastShot = 0;
         this.range = 100;
         this.ammo = 30;
@@ -81,6 +81,7 @@ class Weapon {
         this._shotEnd = new THREE.Vector3();
         this._trailMidpoint = new THREE.Vector3();
         this._direction = new THREE.Vector3();
+        this._muzzleOffset = new THREE.Vector3();
         this._tmpVelocity = new THREE.Vector3();
         this._bulletLineHideAt = 0;
         this._rapidfireTimeout = null;
@@ -208,7 +209,7 @@ class Weapon {
         this.lastShot = currentTime;
 
         if (window.gameEngine) {
-            window.gameEngine.applyScreenShake(0.1, 100);
+            window.gameEngine.applyScreenShake(0.1, 150);
         }
 
         this._raycaster.setFromCamera(this._aimVector, this.camera);
@@ -226,7 +227,17 @@ class Weapon {
 
         const intersects = this._raycaster.intersectObjects(enemyMeshes, true);
 
+        // Calculate trail start based on view mode
         this._shotStart.copy(this.camera.position);
+        const player = window.gameEngine?.player;
+        if (player && player.viewMode === 'thirdPerson') {
+            this._shotStart.copy(player.position);
+            this._shotStart.y += 1.3;
+            this._shotStart.addScaledVector(player.lookDirection, 0.6);
+        } else {
+            this._muzzleOffset.set(0.2, -0.15, -1.28).applyQuaternion(this.camera.quaternion);
+            this._shotStart.add(this._muzzleOffset);
+        }
         this._shotEnd.copy(this._shotStart).addScaledVector(this._raycaster.ray.direction, this.range);
 
         let hit = false;

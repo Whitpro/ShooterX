@@ -1,10 +1,9 @@
 import * as THREE from '../three.js-r178/three.js-r178/src/Three.WebGPU.js';
 import Player from './player.js';
-import Enemy from './enemy.js';
 import Weapon from './weapon.js';
 import UI from './ui.js';
 import Wave from './wave.js';
-import EnemyManager from './enemyManager.js';
+import Enemy, { EnemyManager } from './enemy.js';
 import Environment from './environment.js';
 import Input from './input.js';
 import GAME_STATES from './gameStates.js';
@@ -977,17 +976,21 @@ class GameEngine {
             return;
         }
 
-        // Calculate dampening factor (ease out)
-        const dampening = 1 - progress * progress;
+        // Update anchor to current camera position (player may have moved)
+        this.screenShake.originalCameraPosition.copy(this.camera.position);
 
-        // Generate random offset
+        // Smooth sine-wave oscillation with ease-out envelope
+        const envelope = Math.cos(progress * Math.PI * 0.5);
+        const amp = this.screenShake.intensity * envelope;
+        const freq = 10;
+        const angle = elapsed * 0.001 * Math.PI * 2 * freq;
+
         const offset = new THREE.Vector3(
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 2
-        ).multiplyScalar(this.screenShake.intensity * dampening);
+            Math.sin(angle) * amp,
+            Math.sin(angle * 1.3 + 1) * amp * 0.6,
+            Math.sin(angle * 0.7 + 2) * amp * 0.4
+        );
 
-        // Apply offset to camera
         this.camera.position.copy(this.screenShake.originalCameraPosition).add(offset);
     }
 

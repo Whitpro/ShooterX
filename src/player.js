@@ -12,8 +12,8 @@ class Player {
         this._stamina = {
             max: 100,
             current: 100,
-            drainRate: 25,  // per second while sprinting
-            regenRate: 20,  // per second while not sprinting
+            drainRate: 16,
+            regenRate: 20,
             canSprint: true,
             wasSprintingLastFrame: false
         };
@@ -572,7 +572,12 @@ class Player {
         if (isFlyMode) currentSpeed = flySpd;
         const isMoving = moveDirection.length() > 0;
         const isShiftPressed = input.isKeyPressed('shift');
-        const isSprinting = !isFlyMode && isShiftPressed && isMoving && this._stamina.canSprint;
+        this._stamina.canSprint = this._stamina.current >= 50;
+        const wantSprint = !isFlyMode && isShiftPressed && isMoving;
+        const isSprinting = wantSprint && (
+            (this._stamina.wasSprintingLastFrame && this._stamina.current > 0) ||
+            this._stamina.canSprint
+        );
         
         // 2. Apply sprint speed if sprinting or fly boost
         if (isSprinting) {
@@ -853,22 +858,13 @@ class Player {
     // Method to handle stamina changes
     updateStamina(deltaTime, isSprinting) {
         if (isSprinting) {
-            // Drain stamina while sprinting
             this._stamina.current -= this._stamina.drainRate * deltaTime;
-            
         } else {
-            // Regenerate stamina when not sprinting
             this._stamina.current += this._stamina.regenRate * deltaTime;
-            
         }
-        
-        // Ensure stamina stays within bounds
+
         this._stamina.current = Math.max(0, Math.min(this._stamina.current, this._stamina.max));
-        
-        // Update canSprint flag
-        this._stamina.canSprint = this._stamina.current > 0;
-        
-        // Track sprinting state for this frame
+
         this._stamina.wasSprintingLastFrame = isSprinting;
     }
 
