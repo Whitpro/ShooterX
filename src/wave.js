@@ -22,7 +22,7 @@ class Wave {
         this.enemiesRequired = 5;
         this.spawnPoints = [];
         this.isSpawning = false;
-        this.maxWave = 15;
+        this.maxWave = 10;
         this.waveCounts = [0, 2, 5, 8, 11, 14, 17, 21, 25, 29, 33, 37, 41, 45, 49, 55];
         this.nextWaveTimeoutId = null;
     }
@@ -55,14 +55,14 @@ class Wave {
         const totalEnemies = this.waveCounts[Math.min(this.wave, this.waveCounts.length - 1)];
         const enemyTypes = [];
 
-        if (this.wave === 15) {
+        if (this.wave === 10) {
             enemyTypes.push('BOSS');
         }
 
         while (enemyTypes.length < totalEnemies) {
             const roll = Math.random();
 
-            if (this.wave === 15) {
+            if (this.wave === 10 || this.wave >= 15) {
                 if (roll < 0.3) enemyTypes.push('GRUNT');
                 else if (roll < 0.5) enemyTypes.push('SCOUT');
                 else if (roll < 0.65) enemyTypes.push('HEAVY');
@@ -171,9 +171,15 @@ class Wave {
         this.score.total += this.score.current;
 
         if (this.wave >= this.maxWave) {
-            console.log('Maximum wave reached! Game completed!');
+            console.log('All waves completed!');
             if (window.gameEngine) {
-                window.gameEngine.gameOver();
+                window.gameEngine.isPaused = true;
+                if (window.gameEngine.ui) {
+                    window.gameEngine.ui.showGameCompletionScreen();
+                }
+                if (document.pointerLockElement === document.body) {
+                    document.exitPointerLock();
+                }
             }
             return;
         }
@@ -244,6 +250,25 @@ class Wave {
         this.state = 'WAITING';
         this.startWave();
 
+        if (window.gameEngine && window.gameEngine.ui) {
+            window.gameEngine.ui.updateScore(this.getCurrentState());
+        }
+    }
+
+    setWave(n) {
+        const newWave = Math.max(1, Math.floor(n));
+        if (this.nextWaveTimeoutId) {
+            clearTimeout(this.nextWaveTimeoutId);
+            this.nextWaveTimeoutId = null;
+        }
+        this.state = 'WAITING';
+        this.wave = newWave;
+        this.score.current = 0;
+        this.score.shotsFired = 0;
+        this.score.shotsHit = 0;
+        this.enemiesKilled = 0;
+        this.enemiesRequired = 5;
+        this.startWave();
         if (window.gameEngine && window.gameEngine.ui) {
             window.gameEngine.ui.updateScore(this.getCurrentState());
         }

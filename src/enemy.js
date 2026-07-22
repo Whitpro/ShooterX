@@ -407,8 +407,87 @@ class Enemy {
 
         if (distanceToPlayer <= this.attackRange) {
             player.takeDamage(this.damage, this.position.clone());
+            this.createAttackTrail(player);
             this.attackCooldown = this.attackDelay;
         }
+    }
+
+    createAttackTrail(player) {
+        if (!this.scene || !player) return;
+
+        const startPos = this.position.clone();
+        const config = ENEMY_TYPES[this.type.toUpperCase()];
+        const height = config && config.model && config.model.geometry && config.model.geometry.parameters 
+            ? config.model.geometry.parameters.height * 0.7 
+            : 1.2;
+        startPos.y = height;
+
+        const targetPos = (player.camera ? player.camera.position.clone() : player.position.clone());
+        
+        // Direction and distance
+        const direction = new THREE.Vector3().subVectors(targetPos, startPos);
+        const distance = direction.length();
+        if (distance <= 0) return;
+
+        // Choose trail color based on enemy type
+        let trailColor = 0xff3333; // Default red
+        const upperType = this.type.toUpperCase();
+        if (upperType === 'SCOUT') trailColor = 0x33ff33;
+        else if (upperType === 'HEAVY') trailColor = 0x3388ff;
+        else if (upperType === 'SNIPER') trailColor = 0xffff33;
+        else if (upperType === 'COMMANDER') trailColor = 0xff33ff;
+        else if (upperType === 'BOSS') trailColor = 0xff8800;
+
+        // Create glowing laser beam trail
+        const geometry = new THREE.CylinderGeometry(0.04, 0.04, distance, 6);
+        const material = new THREE.MeshBasicMaterial({
+            color: trailColor,
+            transparent: true,
+            opacity: 0.9
+        });
+
+        const beam = new THREE.Mesh(geometry, material);
+        beam.position.copy(startPos.clone().add(targetPos).multiplyScalar(0.5));
+        beam.lookAt(targetPos);
+        beam.rotateX(Math.PI / 2);
+
+        this.scene.add(beam);
+
+        // Muzzle flash particle at enemy position
+        const flashGeo = new THREE.SphereGeometry(0.2, 8, 8);
+        const flashMat = new THREE.MeshBasicMaterial({
+            color: trailColor,
+            transparent: true,
+            opacity: 1.0
+        });
+        const flash = new THREE.Mesh(flashGeo, flashMat);
+        flash.position.copy(startPos);
+        this.scene.add(flash);
+
+        // Animate beam & flash fade out
+        const startTime = performance.now();
+        const duration = 180; // ms
+
+        const fade = () => {
+            const elapsed = performance.now() - startTime;
+            const progress = elapsed / duration;
+
+            if (progress < 1.0) {
+                material.opacity = (1 - progress) * 0.9;
+                flashMat.opacity = 1 - progress;
+                flash.scale.setScalar(1 + progress * 1.5);
+                requestAnimationFrame(fade);
+            } else {
+                this.scene.remove(beam);
+                this.scene.remove(flash);
+                geometry.dispose();
+                material.dispose();
+                flashGeo.dispose();
+                flashMat.dispose();
+            }
+        };
+
+        fade();
     }
 
     takeDamage(amount) {

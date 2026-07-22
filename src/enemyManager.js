@@ -9,7 +9,7 @@ class EnemyManager {
         this.enemies = [];
         this.lastSpawnTime = 0;
         this.spawnCooldown = 2000;
-        this.maxEnemies = 10;
+        this.maxEnemies = 100;
 
         this.spawnQueue = [];
         this.isSpawning = false;

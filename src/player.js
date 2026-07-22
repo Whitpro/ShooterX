@@ -564,15 +564,21 @@ class Player {
         // COMPLETELY REWRITTEN STAMINA & SPRINT HANDLING
         // =============================================
         
+        const isFlyMode = window.gameEngine && window.gameEngine.freecamEnabled;
+        const flySpd = isFlyMode ? (window.gameEngine.flySpeed || 10) : 0;
+
         // 1. Determine if we should be sprinting
         let currentSpeed = this.speed;
+        if (isFlyMode) currentSpeed = flySpd;
         const isMoving = moveDirection.length() > 0;
         const isShiftPressed = input.isKeyPressed('shift');
-        const isSprinting = isShiftPressed && isMoving && this._stamina.canSprint;
+        const isSprinting = !isFlyMode && isShiftPressed && isMoving && this._stamina.canSprint;
         
-        // 2. Apply sprint speed if sprinting
+        // 2. Apply sprint speed if sprinting or fly boost
         if (isSprinting) {
             currentSpeed = this.sprintSpeed;
+        } else if (isFlyMode && isShiftPressed) {
+            currentSpeed = flySpd * 2;
         }
         
         // 3. Update stamina based on sprinting state
@@ -587,32 +593,44 @@ class Player {
         // Calculate new position from movement
         const newPosition = this._newPosition.copy(this.position).add(moveDirection);
         
-        // Handle jumping with spacebar
-        if (input.isKeyPressed(' ') && (this.isGrounded || this.infiniteJump)) {
-            this.velocity.y = this.jumpForce;
-            this.isGrounded = false;
-        }
-
-        // Apply gravity
-        this.velocity.y -= this.gravity * deltaTime;
-        newPosition.y += this.velocity.y * deltaTime;
-
-        // Check for collisions and update position
-        if (!environment.checkWallCollision(newPosition)) {
+        if (isFlyMode) {
+            // Fly mode: Space = up, Q = down, no gravity, no ground check
+            if (input.isKeyPressed(' ')) {
+                newPosition.y += currentSpeed * deltaTime;
+            }
+            if (input.isKeyPressed('q')) {
+                newPosition.y -= currentSpeed * deltaTime;
+            }
+            this.velocity.y = 0;
             this.position.copy(newPosition);
         } else {
-            // Try horizontal movement only if vertical movement fails
-            newPosition.y = this.position.y;
+            // Normal mode: jumping and gravity
+            if (input.isKeyPressed(' ') && (this.isGrounded || this.infiniteJump)) {
+                this.velocity.y = this.jumpForce;
+                this.isGrounded = false;
+            }
+
+            // Apply gravity
+            this.velocity.y -= this.gravity * deltaTime;
+            newPosition.y += this.velocity.y * deltaTime;
+
+            // Check for collisions and update position
             if (!environment.checkWallCollision(newPosition)) {
                 this.position.copy(newPosition);
+            } else {
+                // Try horizontal movement only if vertical movement fails
+                newPosition.y = this.position.y;
+                if (!environment.checkWallCollision(newPosition)) {
+                    this.position.copy(newPosition);
+                }
             }
-        }
 
-        // Ground check - always check ground without the E/Q condition
-        if (this.position.y <= 1.0) {
-            this.position.y = 1.0; // Set to player height
-            this.velocity.y = 0;
-            this.isGrounded = true;
+            // Ground check
+            if (this.position.y <= 1.0) {
+                this.position.y = 1.0;
+                this.velocity.y = 0;
+                this.isGrounded = true;
+            }
         }
         
         // Update the player model position

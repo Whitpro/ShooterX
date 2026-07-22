@@ -1,12 +1,12 @@
 @echo off
-echo Building Shooter X v1.3.0 Packages...
+echo Building Shooter X v2.0.0 Packages...
 
 REM Create build directory if it doesn't exist
 if not exist "dist" mkdir dist
 
 REM Clean up old files if they exist
-if exist "dist\ShooterX-v1.3.0.zip" del "dist\ShooterX-v1.3.0.zip"
-if exist "dist\ShooterX-Setup-1.3.0.exe" del "dist\ShooterX-Setup-1.3.0.exe"
+if exist "dist\ShooterX-v2.0.0.zip" del "dist\ShooterX-v2.0.0.zip"
+if exist "dist\ShooterX-Setup-2.0.0.exe" del "dist\ShooterX-Setup-2.0.0.exe"
 
 REM Build the electron app first
 echo Building Electron app...
@@ -26,7 +26,7 @@ if exist "%SEVENZIP_PATH%" (
     echo Using 7-Zip for faster compression...
     
     REM Use 7-Zip with multi-threading and optimal compression settings
-    "%SEVENZIP_PATH%" a -tzip "dist\ShooterX-v1.3.0.zip" "dist\shooter-x-win32-x64\*" -mx=5 -mmt=on
+    "%SEVENZIP_PATH%" a -tzip "dist\ShooterX-v2.0.0.zip" "dist\shooter-x-win32-x64\*" -mx=5 -mmt=on
     
     if errorlevel 1 (
         echo Failed to create ZIP file with 7-Zip!
@@ -43,7 +43,7 @@ if exist "%SEVENZIP_PATH%" (
 :use_powershell
 REM Fallback to PowerShell but with optimized parameters
 echo Using PowerShell for compression...
-powershell -Command "& {$ProgressPreference = 'SilentlyContinue'; Compress-Archive -Path dist\shooter-x-win32-x64\* -DestinationPath dist\ShooterX-v1.3.0.zip -Force}"
+powershell -Command "& {$ProgressPreference = 'SilentlyContinue'; Compress-Archive -Path dist\shooter-x-win32-x64\* -DestinationPath dist\ShooterX-v2.0.0.zip -Force}"
 
 if errorlevel 1 (
     echo Failed to create ZIP file!
@@ -54,7 +54,7 @@ if errorlevel 1 (
 )
 
 :zip_success
-echo ZIP file created successfully at: %CD%\dist\ShooterX-v1.3.0.zip
+echo ZIP file created successfully at: %CD%\dist\ShooterX-v2.0.0.zip
 
 REM Build installer if NSIS is available
 echo Building installer...
@@ -63,14 +63,14 @@ if exist "%PROGRAMFILES(X86)%\NSIS\makensis.exe" (
     if errorlevel 1 (
         echo Failed to build installer!
     ) else (
-        echo Installer built successfully at: %CD%\dist\ShooterX-Setup-1.3.0.exe
+        echo Installer built successfully at: %CD%\dist\ShooterX-Setup-2.0.0.exe
     )
 ) else (
     echo NSIS not found. Skipping installer creation.
 )
 
 echo Build process completed!
-echo ZIP package: %CD%\dist\ShooterX-v1.3.0.zip
-echo Installer: %CD%\dist\ShooterX-Setup-1.3.0.exe
+echo ZIP package: %CD%\dist\ShooterX-v2.0.0.zip
+echo Installer: %CD%\dist\ShooterX-Setup-2.0.0.exe
 
 pause 

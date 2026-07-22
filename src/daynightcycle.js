@@ -72,8 +72,8 @@ const KEYFRAMES = [
 class DayNightCycle {
     constructor(env) {
         this.env = env;
-        // Start at 2pm to match current bright warm setup
-        this.hour = 14;
+        // Start at noon for bright default lighting
+        this.hour = 12;
         // Full 24h day in real seconds
         this.cycleDuration = 300;
 

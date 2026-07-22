@@ -1196,11 +1196,11 @@ class UI {
             completionScreen.className = 'menu';
             completionScreen.innerHTML = `
                 <div class="menu-content">
-                    <h1 style="color: #4CAF50;">Game Complete!</h1>
-                    <p class="score">You've completed all 5 waves!</p>
-                    <p class="score">Final Score: <span id="finalCompletionScore">0</span></p>
-                    <button class="menu-button start-button" id="playAgainButton">Play Again</button>
-                    <button class="menu-button quit-button" id="quitToMenuButton">Main Menu</button>
+                    <h1 style="color: #00ffaa; text-shadow: 0 0 20px rgba(0,255,170,0.8);">VICTORY</h1>
+                    <p class="score" style="color:#ccc; font-size:20px; margin-bottom:8px;">You've conquered all 10 waves!</p>
+                    <p class="score" style="color:#888; font-size:16px;">Final Score: <span id="finalCompletionScore" style="color:#00ffaa; font-weight:700;">0</span></p>
+                    <button class="menu-button start-button" id="continuePlayingButton" style="margin-top:30px;">Continue Playing</button>
+                    <button class="menu-button quit-button" id="completionMainMenuButton">Main Menu</button>
                 </div>
             `;
             
@@ -1217,13 +1217,12 @@ class UI {
             }
             
             // Add event listeners
-            document.getElementById('playAgainButton').addEventListener('click', () => {
+            document.getElementById('continuePlayingButton').addEventListener('click', () => {
                 this.hideGameCompletionScreen();
-                this.game.reset();
-                this.game.startGame();
+                this.game.continueFromEndless();
             });
             
-            document.getElementById('quitToMenuButton').addEventListener('click', () => {
+            document.getElementById('completionMainMenuButton').addEventListener('click', () => {
                 this.hideGameCompletionScreen();
                 this.game.quitToMenu();
             });

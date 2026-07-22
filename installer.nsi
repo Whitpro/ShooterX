@@ -5,12 +5,12 @@
 ; General
 Name "Shooter X"
 !define PRODUCT_NAME "ShooterX"
-!define PRODUCT_VERSION "1.3.0"
+!define PRODUCT_VERSION "2.0.0"
 !define PRODUCT_PUBLISHER "ShooterX Team"
 !define PRODUCT_WEB_SITE "https://www.shooterx.com"
 
 ; Output file
-OutFile "dist\ShooterX-Setup-1.3.0.exe"
+OutFile "dist\ShooterX-Setup-2.0.0.exe"
 InstallDir "$PROGRAMFILES64\Shooter X"
 InstallDirRegKey HKCU "Software\Shooter X" ""
 

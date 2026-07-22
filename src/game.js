@@ -140,19 +140,9 @@ class GameEngine {
                 this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.maxPixelRatio) * this.renderScale);
             });
             
-            // Freecam parameters
+            // Fly mode parameters
             this.freecamEnabled = false;
-            this.freecamYaw = new THREE.Object3D();
-            this.freecamPitch = new THREE.Object3D();
-            this.freecamYaw.add(this.freecamPitch);
-            this.scene.add(this.freecamYaw);
-            this._freecamPointerLockHandler = (e) => {
-                if (this.freecamEnabled && document.pointerLockElement === document.body) {
-                    this.freecamYaw.rotation.y -= e.movementX * 0.002;
-                    this.freecamPitch.rotation.x -= e.movementY * 0.002;
-                    this.freecamPitch.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.freecamPitch.rotation.x));
-                }
-            };
+            this.flySpeed = 10;
             
             this.weaponMaxAmmo = 30; // Persistent max ammo for weapon
             this._renderInProgress = false;
@@ -524,25 +514,6 @@ class GameEngine {
     }
 
     update(deltaTime) {
-        if (this.freecamEnabled) {
-            const speed = this.input.isKeyPressed('shift') ? 12 : 6;
-            const move = new THREE.Vector3();
-            if (this.input.isKeyPressed('w')) move.z -= 1;
-            if (this.input.isKeyPressed('s')) move.z += 1;
-            if (this.input.isKeyPressed('a')) move.x -= 1;
-            if (this.input.isKeyPressed('d')) move.x += 1;
-            if (this.input.isKeyPressed(' ')) move.y += 1;
-            if (this.input.isKeyPressed('q')) move.y -= 1;
-
-            if (move.lengthSq() > 0) {
-                move.normalize().multiplyScalar(speed * deltaTime);
-                // Transform local movement to world space
-                this.freecamYaw.position.add(this.freecamYaw.localToWorld(move).sub(this.freecamYaw.position));
-            }
-
-            // No need to update camera position/rotation directly; it's attached to the pitch object
-            return;
-        }
         if (this.state !== GAME_STATES.PLAYING || !this.player || !this.weapon) return;
 
         try {
@@ -794,6 +765,24 @@ class GameEngine {
                     document.exitPointerLock();
                 }
             });
+        }
+    }
+
+    continueFromEndless() {
+        debug('Continuing into endless mode');
+        if (this.waveSystem) {
+            this.waveSystem.maxWave = 999;
+            this.waveSystem.state = 'WAITING';
+            this.waveSystem.wave++;
+            this.waveSystem.startWave();
+        }
+        this.isPaused = false;
+        this.state = GAME_STATES.PLAYING;
+        if (this.ui) {
+            this.ui.showGameplayUI();
+        }
+        if (document.pointerLockElement !== document.body) {
+            document.body.requestPointerLock();
         }
     }
 
@@ -1060,25 +1049,14 @@ class GameEngine {
     toggleFreecam() {
         this.freecamEnabled = !this.freecamEnabled;
         if (this.freecamEnabled) {
-            // Set yaw and pitch to current camera state
-            this.freecamYaw.position.copy(this.camera.position);
-            this.freecamYaw.rotation.set(0, this.camera.rotation.y, 0);
-            this.freecamPitch.rotation.set(this.camera.rotation.x, 0, 0);
-            this.freecamPitch.add(this.camera);
-            // Request pointer lock for freecam mouse look
-            document.body.requestPointerLock();
-            window.addEventListener('mousemove', this._freecamPointerLockHandler);
-        } else {
-            // Detach camera from pitch and restore to scene
-            this.scene.add(this.camera);
             if (this.player) {
-                this.player.updateCameraPosition();
+                this.player.gravity = 0;
+                this.player.velocity.y = 0;
             }
-            // Exit pointer lock if in freecam
-            if (document.pointerLockElement === document.body) {
-                document.exitPointerLock();
+        } else {
+            if (this.player) {
+                this.player.gravity = 9.8;
             }
-            window.removeEventListener('mousemove', this._freecamPointerLockHandler);
         }
     }
 
