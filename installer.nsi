@@ -5,12 +5,12 @@
 ; General
 Name "Shooter X"
 !define PRODUCT_NAME "ShooterX"
-!define PRODUCT_VERSION "2.0.0"
+!define PRODUCT_VERSION "2.1.0"
 !define PRODUCT_PUBLISHER "ShooterX Team"
 !define PRODUCT_WEB_SITE "https://www.shooterx.com"
 
 ; Output file
-OutFile "dist\ShooterX-Setup-2.0.0.exe"
+OutFile "dist\ShooterX-Setup-${PRODUCT_VERSION}.exe"
 InstallDir "$PROGRAMFILES64\Shooter X"
 InstallDirRegKey HKCU "Software\Shooter X" ""
 
@@ -38,7 +38,10 @@ Section "Install"
     SetOutPath "$INSTDIR"
     
     ; Copy all files from the packaged game
-    File /r "dist\shooter-x-win32-x64\*.*"
+    !ifndef SRCDIR
+        !define SRCDIR "dist\win-unpacked"
+    !endif
+    File /r "${SRCDIR}\*.*"
     
     ; Store installation folder
     WriteRegStr HKCU "Software\Shooter X" "" $INSTDIR
@@ -57,7 +60,7 @@ Section "Install"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Shooter X" \
                      "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Shooter X" \
-                     "DisplayVersion" "1.2.8"
+                     "DisplayVersion" "${PRODUCT_VERSION}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Shooter X" \
                      "Publisher" "Shooter X"
     

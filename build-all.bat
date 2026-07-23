@@ -1,35 +1,48 @@
 @echo off
-echo Building Shooter X v2.0.0 Packages...
+setlocal enabledelayedexpansion
 
-REM Create build directory if it doesn't exist
+REM Auto-detect version from package.json
+for /f "tokens=2 delims=:," %%a in ('powershell -Command "& {(Get-Content package.json | ConvertFrom-Json).version}"') do set "VERSION=%%~a"
+set "VERSION=%VERSION: =%"
+if "%VERSION%"=="" set "VERSION=2.1.0"
+set "ZIP_FILE=dist\ShooterX-v%VERSION%.zip"
+
+echo Building Shooter X v%VERSION% Packages...
+
 if not exist "dist" mkdir dist
 
-REM Clean up old files if they exist
-if exist "dist\ShooterX-v2.0.0.zip" del "dist\ShooterX-v2.0.0.zip"
-if exist "dist\ShooterX-Setup-2.0.0.exe" del "dist\ShooterX-Setup-2.0.0.exe"
+if exist "%ZIP_FILE%" del "%ZIP_FILE%"
+if exist "dist\ShooterX-Setup-%VERSION%.exe" del "dist\ShooterX-Setup-%VERSION%.exe"
 
-REM Build the electron app first
-echo Building Electron app...
+echo Building Electron app (electron-builder)...
 call npm run package-win
 if errorlevel 1 (
-    echo Failed to build Electron app!
+    echo electron-builder failed, trying electron-packager...
+    call npm run package-win-legacy
+    if errorlevel 1 (
+        echo Failed to build Electron app!
+        pause
+        exit /b 1
+    )
+    set "BUILD_DIR=dist\shooter-x-win32-x64"
+) else (
+    set "BUILD_DIR=dist\win-unpacked"
+)
+
+if not exist "!BUILD_DIR!" (
+    echo Build directory !BUILD_DIR! not found!
     pause
     exit /b 1
 )
 
-REM Package the app into a ZIP file using PowerShell
 echo Creating ZIP file...
 
-REM Check if 7-Zip is available (much faster than PowerShell's Compress-Archive)
 set "SEVENZIP_PATH=C:\Program Files\7-Zip\7z.exe"
 if exist "%SEVENZIP_PATH%" (
     echo Using 7-Zip for faster compression...
-    
-    REM Use 7-Zip with multi-threading and optimal compression settings
-    "%SEVENZIP_PATH%" a -tzip "dist\ShooterX-v2.0.0.zip" "dist\shooter-x-win32-x64\*" -mx=5 -mmt=on
-    
+    "%SEVENZIP_PATH%" a -tzip "%ZIP_FILE%" "!BUILD_DIR!\*" -mx=5 -mmt=on
     if errorlevel 1 (
-        echo Failed to create ZIP file with 7-Zip!
+        echo 7-Zip failed, using PowerShell...
         goto use_powershell
     ) else (
         echo ZIP file created successfully with 7-Zip!
@@ -41,10 +54,8 @@ if exist "%SEVENZIP_PATH%" (
 )
 
 :use_powershell
-REM Fallback to PowerShell but with optimized parameters
 echo Using PowerShell for compression...
-powershell -Command "& {$ProgressPreference = 'SilentlyContinue'; Compress-Archive -Path dist\shooter-x-win32-x64\* -DestinationPath dist\ShooterX-v2.0.0.zip -Force}"
-
+powershell -Command "& {$ProgressPreference = 'SilentlyContinue'; Compress-Archive -Path !BUILD_DIR!\* -DestinationPath '%ZIP_FILE%' -Force}"
 if errorlevel 1 (
     echo Failed to create ZIP file!
     pause
@@ -54,23 +65,21 @@ if errorlevel 1 (
 )
 
 :zip_success
-echo ZIP file created successfully at: %CD%\dist\ShooterX-v2.0.0.zip
+echo ZIP file created: %CD%\%ZIP_FILE%
 
-REM Build installer if NSIS is available
 echo Building installer...
 if exist "%PROGRAMFILES(X86)%\NSIS\makensis.exe" (
-    "%PROGRAMFILES(X86)%\NSIS\makensis.exe" installer.nsi
+    "%PROGRAMFILES(X86)%\NSIS\makensis.exe" /DSRCDIR="!BUILD_DIR!" installer.nsi
     if errorlevel 1 (
         echo Failed to build installer!
     ) else (
-        echo Installer built successfully at: %CD%\dist\ShooterX-Setup-2.0.0.exe
+        echo Installer built: %CD%\dist\ShooterX-Setup-%VERSION%.exe
     )
 ) else (
     echo NSIS not found. Skipping installer creation.
 )
 
 echo Build process completed!
-echo ZIP package: %CD%\dist\ShooterX-v2.0.0.zip
-echo Installer: %CD%\dist\ShooterX-Setup-2.0.0.exe
-
-pause 
+echo ZIP package: %CD%\%ZIP_FILE%
+echo Installer: %CD%\dist\ShooterX-Setup-%VERSION%.exe
+pause
