@@ -242,8 +242,12 @@ class UI {
                 color: rgba(255,255,255,0.8); text-align: left; font-weight: 500;
             }
             #monsterInfoScreen .enemy-desc {
-                margin-top: 10px; font-size: 11px; color: rgba(255,255,255,0.45);
-                line-height: 1.5;
+                font-size: 12px; color: rgba(255,255,255,0.5);
+                line-height: 1.6;
+            }
+            #monsterInfoScreen .enemy-wave {
+                font-size: 11px; font-weight: 700; letter-spacing: 1px;
+                margin: 6px 0 8px; text-align: center;
             }
 
             #monsterInfoScreen .powerup-grid {
@@ -302,11 +306,11 @@ class UI {
         document.head.appendChild(infoStyle);
 
         const enemyData = [
-            { id: 'grunt', name: 'GRUNT', hp: 100, spd: 3.5, dmg: 10, pts: 100, range: 1.2, color: '#ff4444', desc: 'Basic enemy that slowly approaches and attacks at close range.' },
-            { id: 'scout', name: 'SCOUT', hp: 75, spd: 5, dmg: 8, pts: 150, range: 0.9, color: '#44ff44', desc: 'Fast-moving enemy that tries to flank and overwhelm.' },
-            { id: 'sniper', name: 'SNIPER', hp: 60, spd: 3, dmg: 25, pts: 250, range: 15, color: '#ffff44', desc: 'Long-range attacker with high damage but low health.' },
-            { id: 'commander', name: 'COMMANDER', hp: 175, spd: 4, dmg: 12, pts: 300, range: 7, color: '#ff44ff', desc: 'Buffs nearby enemies and coordinates group attacks.' },
-            { id: 'boss', name: 'BOSS', hp: 800, spd: 3, dmg: 25, pts: 2000, range: 9, color: '#ff6600', desc: 'Armored behemoth with shield phases, shockwave rings, and projectile barrages.' }
+            { id: 'grunt', name: 'GRUNT', hp: 100, spd: 4, dmg: 5, pts: 100, range: 1.2, rate: '1.0s', detect: 15, wave: '1+', color: '#ff4444', desc: 'Basic melee enemy. Slow but relentless — charges straight at the player.' },
+            { id: 'scout', name: 'SCOUT', hp: 75, spd: 5.5, dmg: 8, pts: 150, range: 0.9, rate: '0.9s', detect: 24, wave: '2+', color: '#44ff44', desc: 'Fast flanker that strafes aggressively to overwhelm from the sides.' },
+            { id: 'sniper', name: 'SNIPER', hp: 60, spd: 3, dmg: 25, pts: 250, range: 10, rate: '2.0s', detect: 27, wave: '5+', color: '#ffff44', desc: 'High-damage ranged attacker. Low health — take it out first.' },
+            { id: 'commander', name: 'COMMANDER', hp: 150, spd: 4, dmg: 12, pts: 300, range: 7, rate: '0.9s', detect: 28, wave: '8+', color: '#ff44ff', desc: 'Buffs nearby enemies and coordinates group attacks. High priority target.' },
+            { id: 'boss', name: 'BOSS', hp: 800, spd: 3, dmg: 25, pts: 2000, range: 9, rate: '1.5s', detect: 35, wave: '10', color: '#ff6600', desc: 'Armored behemoth with shield phases, shockwave rings, and devastating projectile barrages.' }
         ];
 
         const powerupData = [
@@ -336,7 +340,10 @@ class UI {
                                         <span class="stat-label">Damage</span><span class="stat-value">${e.dmg}</span>
                                         <span class="stat-label">Points</span><span class="stat-value">${e.pts}</span>
                                         <span class="stat-label">Range</span><span class="stat-value">${e.range}</span>
+                                        <span class="stat-label">Rate</span><span class="stat-value">${e.rate}</span>
+                                        <span class="stat-label">Detect</span><span class="stat-value">${e.detect}</span>
                                     </div>
+                                    <div class="enemy-wave" style="color:${e.color}">Wave ${e.wave}</div>
                                     <div class="enemy-desc">${e.desc}</div>
                                 </div>
                             `).join('')}
