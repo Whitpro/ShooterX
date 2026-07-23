@@ -258,7 +258,7 @@ class Enemy {
 
         const config = ENEMY_TYPES[this.type.toUpperCase()];
         const height = config.model ? (config.model.height || 1.7) / 2 : 1.0;
-        this.model.position.y = height;
+        if (!this._bossFight) this.model.position.y = height;
 
         this._playerPosition.copy(player.position || player.camera.position);
         this._toPlayer.subVectors(this._playerPosition, this.position);
@@ -423,7 +423,7 @@ class Enemy {
 
         const config = ENEMY_TYPES[this.type.toUpperCase()];
         const height = config.model ? (config.model.height || 1.7) / 2 : 1.0;
-        this.model.position.y = height;
+        if (!this._bossFight) this.model.position.y = height;
     }
 
     checkCollision(position) {
